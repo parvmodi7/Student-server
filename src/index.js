@@ -30,7 +30,7 @@ connectDB();
 app.use(helmet()); // HTTP security headers
 app.use(compression()); // Gzip compression
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001','https://teacher-panel-three.vercel.app','https://student-panel-frontend-2rcl.vercel.app/login'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:3001','https://teacher-panel-three.vercel.app','https://student-panel-frontend-2rcl.vercel.app'],
   credentials: true
 }));
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
