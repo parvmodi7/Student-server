@@ -1,14 +1,10 @@
 /**
  * Student Controller
  * Handles student-specific dashboard and data operations
+ * Uses Student model directly (no User model)
  */
 
-const User = require('../models/User');
-const Student = require('../models/Student');
-const Course = require('../models/Course');
-const Assignment = require('../models/Assignment');
-const Grade = require('../models/Grade');
-const Schedule = require('../models/Schedule');
+const { Student, Course, Assignment, Grade, Schedule } = require('../models');
 
 function getGPAPoints(letterGrade) {
   const gradePoints = {
@@ -23,7 +19,7 @@ function getGPAPoints(letterGrade) {
 
 exports.getDashboardData = async function(req, res) {
   try {
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -66,18 +62,20 @@ exports.getDashboardData = async function(req, res) {
 
     var totalPresent = 0;
     var totalClasses = 0;
-    student.attendance.forEach(function(a) {
-      totalPresent += a.present;
-      totalClasses += a.total;
-    });
+    if (student.attendance) {
+      student.attendance.forEach(function(a) {
+        totalPresent += a.present || 0;
+        totalClasses += a.total || 0;
+      });
+    }
     var attendance = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0;
 
     res.json({
       student: {
         id: student.studentId,
-        name: req.user.firstName + ' ' + req.user.lastName,
+        name: student.firstName + ' ' + student.lastName,
         major: student.major,
-        semester: student.enrolledCourses.length,
+        semester: student.enrolledCourses ? student.enrolledCourses.length : 0,
         graduationYear: student.graduationYear
       },
       gpa: parseFloat(gpa),
@@ -116,7 +114,7 @@ exports.getDashboardData = async function(req, res) {
           course: g.course ? g.course.name : 'Unknown',
           courseCode: g.course ? g.course.courseCode : '',
           grade: g.letterGrade,
-          percentage: g.percentage.toFixed(1)
+          percentage: g.percentage ? g.percentage.toFixed(1) : 'N/A'
         };
       })
     });
@@ -128,7 +126,7 @@ exports.getDashboardData = async function(req, res) {
 
 exports.getCoursesWithGrades = async function(req, res) {
   try {
-    var student = await Student.findOne({ userId: req.user.id });
+    var student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -162,7 +160,7 @@ exports.getCoursesWithGrades = async function(req, res) {
 
 exports.getAssignmentsWithStatus = async function(req, res) {
   try {
-    var student = await Student.findOne({ userId: req.user.id });
+    var student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -181,9 +179,9 @@ exports.getAssignmentsWithStatus = async function(req, res) {
       .sort({ dueDate: 1 });
 
     var assignmentsWithStatus = assignments.map(function(a) {
-      var submission = a.submissions.find(function(s) {
+      var submission = a.submissions ? a.submissions.find(function(s) {
         return s.student.toString() === student._id.toString();
-      });
+      }) : null;
       return {
         id: a._id,
         title: a.title,
@@ -208,7 +206,7 @@ exports.getAssignmentsWithStatus = async function(req, res) {
 
 exports.getResults = async function(req, res) {
   try {
-    var student = await Student.findOne({ userId: req.user.id });
+    var student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -242,7 +240,7 @@ exports.getResults = async function(req, res) {
 
 exports.getNotifications = async function(req, res) {
   try {
-    var student = await Student.findOne({ userId: req.user.id });
+    var student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -260,7 +258,7 @@ exports.getNotifications = async function(req, res) {
 
 exports.markNotificationRead = async function(req, res) {
   try {
-    var student = await Student.findOne({ userId: req.user.id });
+    var student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }

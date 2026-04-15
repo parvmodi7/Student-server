@@ -8,6 +8,20 @@
  * - Response caching to reduce API calls
  * - Rate limiting to prevent Gemini API key exhaustion
  * - CORS support for frontend apps
+ * 
+ * Base API Endpoints:
+ * /api/auth        - Registration & Login
+ * /api/user        - Profile management
+ * /api/student     - Student-specific data
+ * /api/teacher    - Teacher-specific data
+ * /api/courses     - Course management
+ * /api/assignments - Assignment management
+ * /api/grades      - Grade management
+ * /api/schedules   - Schedule management
+ * /api/ai          - AI features (Gemini)
+ * /api/reports     - PDF report generation
+ * /api/gamification - XP, achievements, leaderboard
+ * /api/health      - Health check
  */
 require('dotenv').config();
 

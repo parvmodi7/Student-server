@@ -3,7 +3,6 @@
  * Export all models for easy importing
  */
 module.exports = {
-  User: require('./User'),
   Student: require('./Student'),
   Teacher: require('./Teacher'),
   Course: require('./Course'),

@@ -7,7 +7,7 @@
 exports.getStudentSchedule = async (req, res) => {
   try {
     const { Schedule, Student, Course } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
 
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
@@ -34,7 +34,7 @@ exports.getStudentSchedule = async (req, res) => {
 exports.getCourseSchedule = async (req, res) => {
   try {
     const { Schedule, Teacher, Course } = require('../models');
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
 
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
@@ -60,7 +60,7 @@ exports.getCourseSchedule = async (req, res) => {
 exports.getTodaySchedule = async (req, res) => {
   try {
     const { Schedule, Student } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
 
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
@@ -94,7 +94,7 @@ exports.createSchedule = async (req, res) => {
     }
 
     // Verify teacher owns the course
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (teacher && course.teacher.toString() !== teacher._id.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
     }

@@ -68,7 +68,7 @@ exports.createAssignment = async (req, res) => {
   try {
     const { Assignment, Teacher, Course } = require('../models');
     
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
@@ -102,7 +102,7 @@ exports.updateAssignment = async (req, res) => {
     }
 
     // Verify ownership
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher || assignment.teacher.toString() !== teacher._id.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
     }
@@ -127,7 +127,7 @@ exports.submitAssignment = async (req, res) => {
       return res.status(404).json({ error: 'Assignment not found' });
     }
 
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -171,7 +171,7 @@ exports.gradeSubmission = async (req, res) => {
       return res.status(404).json({ error: 'Assignment not found' });
     }
 
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher || assignment.teacher.toString() !== teacher._id.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
     }
@@ -219,7 +219,7 @@ exports.gradeSubmission = async (req, res) => {
 exports.getCourseAssignments = async (req, res) => {
   try {
     const { Assignment, Student } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
 
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
@@ -256,7 +256,7 @@ exports.getCourseAssignments = async (req, res) => {
 exports.getSubmissions = async (req, res) => {
   try {
     const { Assignment, Teacher } = require('../models');
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
 
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });

@@ -7,7 +7,7 @@
 exports.getStudentGrades = async (req, res) => {
   try {
     const { Grade, Student } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
 
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
@@ -33,7 +33,7 @@ exports.getStudentGrades = async (req, res) => {
 exports.getCourseGrades = async (req, res) => {
   try {
     const { Grade, Teacher, Course } = require('../models');
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
 
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
@@ -74,7 +74,7 @@ exports.getCourseGrades = async (req, res) => {
 exports.getGPA = async (req, res) => {
   try {
     const { Grade, Student } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
 
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });

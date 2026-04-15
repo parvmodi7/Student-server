@@ -8,7 +8,7 @@ const { Gamification, Achievement, XP_CONFIG, LEVELS, ACHIEVEMENT_DEFINITIONS } 
 
 exports.getProfile = async (req, res) => {
   try {
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -52,7 +52,7 @@ exports.getProfile = async (req, res) => {
 exports.recordActivity = async (req, res) => {
   try {
     const { activityType, points } = req.body;
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -137,7 +137,7 @@ exports.getLeaderboard = async (req, res) => {
       .limit(20)
       .lean();
 
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     const userRank = leaderboard.findIndex(l => l.student?._id?.toString() === student?._id?.toString()) + 1;
 
     const formattedLeaderboard = leaderboard.map((entry, index) => {
@@ -165,7 +165,7 @@ exports.getLeaderboard = async (req, res) => {
 
 exports.getChallenges = async (req, res) => {
   try {
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -195,7 +195,7 @@ exports.getChallenges = async (req, res) => {
 exports.claimReward = async (req, res) => {
   try {
     const { rewardId } = req.body;
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }

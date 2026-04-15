@@ -1,6 +1,10 @@
 /**
  * Database Seeder
- * Create initial student and teacher for testing
+ * Create initial student and teacher records
+ * 
+ * Database structure:
+ * - students collection: email, password, name, studentId, major, gpa, etc.
+ * - teachers collection: email, password, name, employeeId, department
  */
 require('dotenv').config();
 
@@ -16,73 +20,62 @@ const seed = async () => {
   try {
     await connectDB();
 
-    // Check if users exist
-    const existingStudent = await mongoose.connection.collection('users').findOne({ email: 'student@test.com' });
-    const existingTeacher = await mongoose.connection.collection('users').findOne({ email: 'teacher@test.com' });
-
-    if (existingStudent) {
-      console.log('Student already exists');
-    } else {
-      // Create Student User
-      const studentUser = await mongoose.connection.collection('users').insertOne({
+    // Create Student record (includes all student data)
+    const existingStudent = await mongoose.connection.collection('students').findOne({ email: 'student@test.com' });
+    
+    if (!existingStudent) {
+      await mongoose.connection.collection('students').insertOne({
         email: 'student@test.com',
         password: await bcrypt.hash('password123', 12),
-        role: 'student',
         firstName: 'Alex',
         lastName: 'Johnson',
-        avatar: '',
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      });
-
-      // Create Student Profile
-      await mongoose.connection.collection('students').insertOne({
-        userId: studentUser.insertedId,
         studentId: 'STU-2024-001',
-        enrolledCourses: [],
         major: 'Computer Science',
         graduationYear: 2026,
         gpa: 3.42,
         totalCredits: 45,
-        notifications: []
-      });
-
-      console.log('Student created: student@test.com / password123');
-    }
-
-    if (existingTeacher) {
-      console.log('Teacher already exists');
-    } else {
-      // Create Teacher User
-      const teacherUser = await mongoose.connection.collection('users').insertOne({
-        email: 'teacher@test.com',
-        password: await bcrypt.hash('password123', 12),
-        role: 'teacher',
-        firstName: 'Dr. Sarah',
-        lastName: 'Mitchell',
-        avatar: '',
         isActive: true,
+        enrolledCourses: [],
+        notifications: [],
         createdAt: new Date(),
         updatedAt: new Date()
       });
+      console.log('✅ Student created: student@test.com / password123');
+    } else {
+      console.log('ℹ️ Student already exists');
+    }
 
-      // Create Teacher Profile
+    // Create Teacher record (includes all teacher data)
+    const existingTeacher = await mongoose.connection.collection('teachers').findOne({ email: 'teacher@test.com' });
+    
+    if (!existingTeacher) {
       await mongoose.connection.collection('teachers').insertOne({
-        userId: teacherUser.insertedId,
+        email: 'teacher@test.com',
+        password: await bcrypt.hash('password123', 12),
+        firstName: 'Dr. Sarah',
+        lastName: 'Mitchell',
         employeeId: 'TCH-2024-001',
         department: 'Computer Science',
         designation: 'professor',
-        coursesTaught: []
+        isActive: true,
+        coursesTaught: [],
+        rating: 4.5,
+        totalReviews: 0,
+        createdAt: new Date(),
+        updatedAt: new Date()
       });
-
-      console.log('Teacher created: teacher@test.com / password123');
+      console.log('✅ Teacher created: teacher@test.com / password123');
+    } else {
+      console.log('ℹ️ Teacher already exists');
     }
 
     console.log('\n✅ Seed completed!');
-    console.log('\nLogin Credentials:');
-    console.log('Student: student@test.com / password123');
-    console.log('Teacher: teacher@test.com / password123');
+    console.log('\n📋 Database has ONLY 2 collections:');
+    console.log('   - students: stores email, password, name, studentId, major, gpa, enrolledCourses');
+    console.log('   - teachers: stores email, password, name, employeeId, department, coursesTaught');
+    console.log('\n📋 Login Credentials:');
+    console.log('   Student: student@test.com / password123');
+    console.log('   Teacher: teacher@test.com / password123');
 
     process.exit(0);
   } catch (error) {

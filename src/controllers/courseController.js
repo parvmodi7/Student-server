@@ -42,7 +42,8 @@ exports.getCourse = async (req, res) => {
   try {
     const { Course } = require('../models');
     const course = await Course.findById(req.params.id)
-      .populate('teacher', 'userId firstName lastName department');
+      .populate('teacher', 'userId firstName lastName department')
+      .populate('enrolledStudents', 'studentId userId firstName lastName email major');
 
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
@@ -60,7 +61,7 @@ exports.createCourse = async (req, res) => {
   try {
     const { Course, Teacher } = require('../models');
     
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
@@ -93,7 +94,7 @@ exports.updateCourse = async (req, res) => {
 
     // Check ownership
     const { Teacher } = require('../models');
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
     }
@@ -122,7 +123,7 @@ exports.enrollCourse = async (req, res) => {
       return res.status(400).json({ error: 'Course is full' });
     }
 
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
@@ -150,14 +151,14 @@ exports.enrollCourse = async (req, res) => {
 exports.getTeacherCourses = async (req, res) => {
   try {
     const { Course, Teacher } = require('../models');
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
 
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
 
     const courses = await Course.find({ teacher: teacher._id })
-      .select('-enrolledStudents')
+      .populate('enrolledStudents', 'studentId userId firstName lastName email')
       .sort({ createdAt: -1 });
 
     res.json({ courses });
@@ -171,7 +172,7 @@ exports.getTeacherCourses = async (req, res) => {
 exports.getStudentCourses = async (req, res) => {
   try {
     const { Course, Student } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id })
+    const student = await Student.findById(req.user.id)
       .populate({
         path: 'enrolledCourses',
         populate: { path: 'teacher', select: 'firstName lastName' }

@@ -1,28 +1,27 @@
 /**
  * Teacher Controller
  * Handles teacher-specific dashboard and data operations
+ * Uses Teacher model directly (no User model)
  */
 
-const { User, Teacher, Course, Assignment, Grade, Student } = require('../models');
+const { Teacher, Course, Assignment, Grade, Student } = require('../models');
 
+// Get teacher dashboard
 exports.getDashboardData = async (req, res) => {
   try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
 
-    // Get courses taught
-    const courses = await Course.find({ teacher: teacher._id })
-      .populate('enrolledStudents');
+    const courses = await Course.find({ teacher: teacher._id });
 
-    // Calculate stats
     let totalStudents = 0;
     let totalAssignments = 0;
     let upcomingDeadlines = [];
 
     for (const course of courses) {
-      totalStudents += course.enrolledStudents.length;
+      totalStudents += course.enrolledStudents?.length || 0;
       
       const assignments = await Assignment.find({
         course: course._id,
@@ -35,43 +34,19 @@ exports.getDashboardData = async (req, res) => {
         upcomingDeadlines.push({
           title: a.title,
           course: course.name,
-          dueDate: a.dueDate,
-          submissions: a.submissions.length
+          dueDate: a.dueDate
         });
       });
     }
 
-    // Sort deadlines
     upcomingDeadlines.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-    // Get recent submissions
-    const recentSubmissions = [];
-    const allAssignments = await Assignment.find({
-      teacher: teacher._id
-    }).populate('course', 'name');
-
-    for (const assignment of allAssignments) {
-      for (const submission of assignment.submissions.slice(-2)) {
-        const student = await Student.findById(submission.student);
-        if (student) {
-          recentSubmissions.push({
-            assignment: assignment.title,
-            course: assignment.course?.name,
-            student: student.studentId,
-            studentName: `${student.userId?.firstName || 'Student'}`,
-            submittedAt: submission.submittedAt,
-            graded: !!submission.grade
-          });
-        }
-      }
-    }
 
     res.json({
       teacher: {
         id: teacher.employeeId,
-        name: `${req.user.firstName} ${req.user.lastName}`,
-        department: teacher.designation,
-        email: req.user.email
+        name: `${teacher.firstName} ${teacher.lastName}`,
+        department: teacher.department,
+        email: teacher.email
       },
       stats: {
         totalCourses: courses.length,
@@ -84,12 +59,11 @@ exports.getDashboardData = async (req, res) => {
         id: c._id,
         name: c.name,
         courseCode: c.courseCode,
-        enrolled: c.enrolledStudents.length,
+        enrolled: c.enrolledStudents?.length || 0,
         maxStudents: c.maxStudents,
         semester: `${c.semester} ${c.year}`
       })),
-      upcomingDeadlines: upcomingDeadlines.slice(0, 5),
-      recentSubmissions: recentSubmissions.slice(0, 10)
+      upcomingDeadlines: upcomingDeadlines.slice(0, 5)
     });
   } catch (error) {
     console.error('[GET TEACHER DASHBOARD DATA ERROR]', error);
@@ -97,108 +71,10 @@ exports.getDashboardData = async (req, res) => {
   }
 };
 
+// Get students in a course
 exports.getCourseStudents = async (req, res) => {
   try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
-    if (!teacher) {
-      return res.status(403).json({ error: 'Teacher profile not found' });
-    }
-
-    const course = await Course.findById(req.params.courseId)
-      .populate('enrolledStudents');
-
-    if (!course || course.teacher.toString() !== teacher._id.toString()) {
-      return res.status(403).json({ error: 'Not authorized' });
-    }
-
-    const students = await Promise.all(course.enrolledStudents.map(async (student) => {
-      const grades = await Grade.find({ 
-        student: student._id, 
-        course: course._id 
-      });
-      
-      const average = grades.length > 0
-        ? (grades.reduce((sum, g) => sum + g.percentage, 0) / grades.length).toFixed(1)
-        : 'N/A';
-
-      return {
-        id: student._id,
-        studentId: student.studentId,
-        name: student.userId ? `${student.userId.firstName} ${student.userId.lastName}` : 'Unknown',
-        email: student.userId?.email || '',
-        major: student.major,
-        attendance: student.attendance.find(a => a.courseId.toString() === course._id.toString())?.percentage || 0,
-        averageGrade: average,
-        grades: grades.map(g => ({
-          assignment: g.assignment?.title || 'Overall',
-          grade: g.grade,
-          totalPoints: g.totalPoints,
-          letterGrade: g.letterGrade
-        }))
-      };
-    }));
-
-    res.json({ students });
-  } catch (error) {
-    console.error('[GET COURSE STUDENTS ERROR]', error);
-    res.status(500).json({ error: 'Failed to get students' });
-  }
-};
-
-exports.getAllStudents = async (req, res) => {
-  try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
-    if (!teacher) {
-      return res.status(403).json({ error: 'Teacher profile not found' });
-    }
-
-    const courses = await Course.find({ teacher: teacher._id });
-    const courseIds = courses.map(c => c._id);
-
-    const students = await Student.find({
-      enrolledCourses: { $in: courseIds }
-    }).populate('userId', 'firstName lastName email');
-
-    // Group by course
-    const studentsByCourse = {};
-    courses.forEach(c => {
-      studentsByCourse[c._id] = [];
-    });
-
-    for (const student of students) {
-      for (const courseId of student.enrolledCourses) {
-        if (studentsByCourse[courseId]) {
-          const existing = studentsByCourse[courseId].find(s => s._id.toString() === student._id.toString());
-          if (!existing) {
-            studentsByCourse[courseId].push(student);
-          }
-        }
-      }
-    }
-
-    const result = courses.map(c => ({
-      courseId: c._id,
-      courseName: c.name,
-      courseCode: c.courseCode,
-      students: studentsByCourse[c._id].map(s => ({
-        id: s._id,
-        studentId: s.studentId,
-        name: s.userId ? `${s.userId.firstName} ${s.userId.lastName}` : 'Unknown',
-        email: s.userId?.email || '',
-        major: s.major
-      }))
-    }));
-
-    res.json({ courses: result });
-  } catch (error) {
-    console.error('[GET ALL STUDENTS ERROR]', error);
-    res.status(500).json({ error: 'Failed to get students' });
-  }
-};
-
-exports.getCourseGrades = async (req, res) => {
-  try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
@@ -208,9 +84,62 @@ exports.getCourseGrades = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    const grades = await Grade.find({ course: course._id })
-      .populate('student', 'studentId')
-      .populate('assignment', 'title totalPoints');
+    const students = await Student.find({
+      _id: { $in: course.enrolledStudents }
+    });
+
+    res.json({ students: students.map(s => ({
+      id: s._id,
+      studentId: s.studentId,
+      name: `${s.firstName} ${s.lastName}`,
+      email: s.email,
+      major: s.major,
+      gpa: s.gpa
+    }))});
+  } catch (error) {
+    console.error('[GET COURSE STUDENTS ERROR]', error);
+    res.status(500).json({ error: 'Failed to get students' });
+  }
+};
+
+// Get ALL students from database
+exports.getAllStudents = async (req, res) => {
+  try {
+    const students = await Student.find({}).select('-password');
+    
+    res.json({ students: students.map(s => ({
+      _id: s._id,
+      email: s.email,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      isActive: s.isActive,
+      createdAt: s.createdAt,
+      studentId: s.studentId,
+      major: s.major,
+      gpa: s.gpa,
+      totalCredits: s.totalCredits,
+      graduationYear: s.graduationYear
+    }))});
+  } catch (error) {
+    console.error('[GET ALL STUDENTS ERROR]', error);
+    res.status(500).json({ error: 'Failed to get students' });
+  }
+};
+
+// Get grades for a course
+exports.getCourseGrades = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher) {
+      return res.status(403).json({ error: 'Teacher profile not found' });
+    }
+
+    const course = await Course.findById(req.params.courseId);
+    if (!course || course.teacher.toString() !== teacher._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const grades = await Grade.find({ course: course._id });
 
     const stats = {
       average: 0,
@@ -224,13 +153,6 @@ exports.getCourseGrades = async (req, res) => {
       stats.average = (percentages.reduce((a, b) => a + b, 0) / grades.length).toFixed(1);
       stats.highest = Math.max(...percentages);
       stats.lowest = Math.min(...percentages);
-      
-      grades.forEach(g => {
-        const letter = g.letterGrade.charAt(0);
-        if (stats.distribution[letter] !== undefined) {
-          stats.distribution[letter]++;
-        }
-      });
     }
 
     res.json({ grades, stats });
@@ -240,9 +162,10 @@ exports.getCourseGrades = async (req, res) => {
   }
 };
 
+// Create a new course
 exports.createCourse = async (req, res) => {
   try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
@@ -262,9 +185,10 @@ exports.createCourse = async (req, res) => {
   }
 };
 
+// Create a new assignment
 exports.createAssignment = async (req, res) => {
   try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
@@ -286,9 +210,10 @@ exports.createAssignment = async (req, res) => {
   }
 };
 
+// Update course
 exports.updateCourse = async (req, res) => {
   try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
@@ -305,5 +230,71 @@ exports.updateCourse = async (req, res) => {
   } catch (error) {
     console.error('[UPDATE COURSE ERROR]', error);
     res.status(500).json({ error: 'Failed to update course' });
+  }
+};
+
+// Get all student users (for teacher)
+exports.getAllStudentUsers = async (req, res) => {
+  try {
+    const students = await Student.find({}).select('-password');
+    res.json({ students: students.map(s => s.toJSON()) });
+  } catch (error) {
+    console.error('[GET ALL STUDENT USERS ERROR]', error);
+    res.status(500).json({ error: 'Failed to get students' });
+  }
+};
+
+// Set student password
+exports.setStudentPassword = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    student.password = password;
+    await student.save();
+
+    res.json({ message: 'Password updated successfully', studentId: student._id });
+  } catch (error) {
+    console.error('[SET STUDENT PASSWORD ERROR]', error);
+    res.status(500).json({ error: 'Failed to set password' });
+  }
+};
+
+// Create a new student (teacher creates student)
+exports.createStudent = async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, studentId, major, graduationYear } = req.body;
+
+    const existingStudent = await Student.findOne({ email });
+    if (existingStudent) {
+      return res.status(400).json({ error: 'User with this email already exists' });
+    }
+
+    const student = await Student.create({
+      email,
+      password,
+      firstName,
+      lastName,
+      studentId: studentId || `STU-${Date.now()}`,
+      major: major || 'Computer Science',
+      graduationYear
+    });
+
+    res.status(201).json({ 
+      message: 'Student created successfully',
+      student: student.toJSON()
+    });
+  } catch (error) {
+    console.error('[CREATE STUDENT ERROR]', error);
+    res.status(500).json({ error: 'Failed to create student' });
   }
 };

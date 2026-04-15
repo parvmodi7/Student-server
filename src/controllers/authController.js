@@ -1,62 +1,56 @@
 /**
  * Auth Controller
- * Handles authentication for both students and teachers
+ * Handles authentication for students and teachers
  */
 
-// Register new user (student or teacher)
-exports.register = async (req, res) => {
-  try {
-    const { email, password, role, firstName, lastName, studentId, employeeId, department } = req.body;
+const { Student, Teacher } = require('../models');
 
-    // Check if user exists
-    const { User } = require('../models');
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
+// Register new student (teacher creates student account)
+exports.registerStudent = async (req, res) => {
+  try {
+    const { email, password, firstName, lastName, studentId, major, graduationYear } = req.body;
+
+    // Check if student exists
+    const existingStudent = await Student.findOne({ email });
+    if (existingStudent) {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Create user
-    const user = await User.create({
+    // Create student
+    const student = await Student.create({
       email,
       password,
-      role,
       firstName,
-      lastName
+      lastName,
+      studentId,
+      major: major || 'Computer Science',
+      graduationYear
     });
 
-    // Create role-specific profile
-    if (role === 'student') {
-      const { Student } = require('../models');
-      await Student.create({
-        userId: user._id,
-        studentId,
-        major: req.body.major || '',
-        graduationYear: req.body.graduationYear
-      });
-    } else if (role === 'teacher') {
-      const { Teacher } = require('../models');
-      await Teacher.create({
-        userId: user._id,
-        employeeId,
-        department
-      });
-    }
-
-    const token = user.generateToken();
-    res.status(201).json({ user: user.toJSON(), token });
+    const token = student.generateToken();
+    res.status(201).json({ user: student.toJSON(), token });
   } catch (error) {
-    console.error('[REGISTER ERROR]', error);
+    console.error('[REGISTER STUDENT ERROR]', error);
     res.status(500).json({ error: 'Registration failed' });
   }
 };
 
-// Login user
+// Login - detects if student or teacher
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    const { User } = require('../models');
 
-    const user = await User.findOne({ email });
+    // Try student first
+    let user = await Student.findOne({ email });
+    let role = 'student';
+
+    // If not student, try teacher
+    if (!user) {
+      user = await Teacher.findOne({ email });
+      role = 'teacher';
+    }
+
+    // Check credentials
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
@@ -80,26 +74,20 @@ exports.login = async (req, res) => {
 // Get current user profile
 exports.getProfile = async (req, res) => {
   try {
-    const { User } = require('../models');
-    const user = await User.findById(req.user.id);
+    const { role, id } = req.user;
+    
+    let user;
+    if (role === 'student') {
+      user = await Student.findById(id);
+    } else if (role === 'teacher') {
+      user = await Teacher.findById(id);
+    }
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Get role-specific data
-    let profileData = {};
-    if (user.role === 'student') {
-      const { Student } = require('../models');
-      profileData = await Student.findOne({ userId: user._id })
-        .populate('enrolledCourses');
-    } else if (user.role === 'teacher') {
-      const { Teacher } = require('../models');
-      profileData = await Teacher.findOne({ userId: user._id })
-        .populate('coursesTaught');
-    }
-
-    res.json({ user: user.toJSON(), profile: profileData });
+    res.json({ user: user.toJSON() });
   } catch (error) {
     console.error('[GET PROFILE ERROR]', error);
     res.status(500).json({ error: 'Failed to get profile' });
@@ -109,14 +97,23 @@ exports.getProfile = async (req, res) => {
 // Update profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { User } = require('../models');
-    const { firstName, lastName, avatar } = req.body;
+    const { role, id } = req.user;
+    const { firstName, lastName, major } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.user.id,
-      { firstName, lastName, avatar },
-      { new: true }
-    );
+    let user;
+    if (role === 'student') {
+      user = await Student.findByIdAndUpdate(
+        id,
+        { firstName, lastName, major },
+        { new: true }
+      );
+    } else if (role === 'teacher') {
+      user = await Teacher.findByIdAndUpdate(
+        id,
+        { firstName, lastName },
+        { new: true }
+      );
+    }
 
     res.json({ user: user.toJSON() });
   } catch (error) {
@@ -125,7 +122,32 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
-// Logout (client-side token removal, server just acknowledges)
+// Logout
 exports.logout = async (req, res) => {
   res.json({ message: 'Logged out successfully' });
+};
+
+// Teacher login (explicit)
+exports.teacherLogin = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    const teacher = await Teacher.findOne({ email });
+    if (!teacher || !(await teacher.comparePassword(password))) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (!teacher.isActive) {
+      return res.status(403).json({ error: 'Account is deactivated' });
+    }
+
+    teacher.lastLogin = new Date();
+    await teacher.save();
+
+    const token = teacher.generateToken();
+    res.json({ user: teacher.toJSON(), token });
+  } catch (error) {
+    console.error('[TEACHER LOGIN ERROR]', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
 };

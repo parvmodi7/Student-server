@@ -1,26 +1,36 @@
 /**
  * Student Routes
  * Protected endpoints for student-specific data
+ * 
+ * Endpoints:
+ * GET /api/student/dashboard       - Get student dashboard with stats
+ * GET /api/student/courses        - Get enrolled courses with grades
+ * GET /api/student/assignments     - Get assignments with submission status
+ * GET /api/student/results        - Get grades/results
+ * GET /api/student/notifications  - Get student notifications
+ * PUT /api/student/notifications/:id/read - Mark notification as read
  */
 const express = require('express');
 const router = express.Router();
 const { studentController } = require('../controllers');
 const { auth, cacheMiddleware } = require('../middleware');
 
-// Dashboard
+// GET /api/student/dashboard - Returns student stats (courses, grades, notifications count)
 router.get('/dashboard', auth(['student']), cacheMiddleware(60), studentController.getDashboardData);
 
-// Courses with grades
+// GET /api/student/courses - Get all enrolled courses with grades
 router.get('/courses', auth(['student']), cacheMiddleware(300), studentController.getCoursesWithGrades);
 
-// Assignments with status
+// GET /api/student/assignments - Get assignments with submission status
 router.get('/assignments', auth(['student']), cacheMiddleware(180), studentController.getAssignmentsWithStatus);
 
-// Results/Grades
+// GET /api/student/results - Get grades/results
 router.get('/results', auth(['student']), cacheMiddleware(300), studentController.getResults);
 
-// Notifications
+// GET /api/student/notifications - Get all notifications
 router.get('/notifications', auth(['student']), studentController.getNotifications);
+
+// PUT /api/student/notifications/:id/read - Mark specific notification as read
 router.put('/notifications/:id/read', auth(['student']), studentController.markNotificationRead);
 
 module.exports = router;

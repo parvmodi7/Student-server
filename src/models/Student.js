@@ -1,36 +1,44 @@
 /**
  * Student Model
- * Extends User with student-specific fields like studentId, enrolled courses, grades
+ * Contains all student data including login credentials
  */
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 
 const studentSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
+  email: {
+    type: String,
     required: true,
     unique: true,
+    lowercase: true,
     index: true
+  },
+  password: {
+    type: String,
+    required: true,
+    minlength: 6
+  },
+  firstName: {
+    type: String,
+    required: true,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    required: true,
+    trim: true
   },
   studentId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
-  enrolledCourses: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Course'
-  }],
-  enrolledAt: {
-    type: Date,
-    default: Date.now
+  major: {
+    type: String,
+    default: ''
   },
   graduationYear: {
     type: Number
-  },
-  major: {
-    type: String
   },
   gpa: {
     type: Number,
@@ -42,23 +50,20 @@ const studentSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
-  completedAssignments: [{
-    assignmentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Assignment' },
-    submittedAt: Date,
-    grade: Number,
-    feedback: String
+  isActive: {
+    type: Boolean,
+    default: true
+  },
+  lastLogin: {
+    type: Date
+  },
+  enrolledCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course'
   }],
   attendance: [{
     courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
-    present: Number,
-    total: Number,
     percentage: Number
-  }],
-  schedule: [{
-    day: String,
-    time: String,
-    courseId: { type: mongoose.Schema.Types.ObjectId, ref: 'Course' },
-    location: String
   }],
   notifications: [{
     title: String,
@@ -71,8 +76,34 @@ const studentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for efficient queries
-studentSchema.index({ studentId: 1 });
-studentSchema.index({ 'enrolledCourses': 1 });
+// Hash password before saving
+studentSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 12);
+  next();
+});
+
+// Compare password
+studentSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Generate JWT token
+studentSchema.methods.generateToken = function() {
+  const jwt = require('jsonwebtoken');
+  return jwt.sign(
+    { id: this._id, role: 'student', email: this.email },
+    process.env.JWT_SECRET || 'default-secret',
+    { expiresIn: '7d' }
+  );
+};
+
+// Transform output
+studentSchema.methods.toJSON = function() {
+  const obj = this.toObject();
+  delete obj.password;
+  obj.role = 'student';
+  return obj;
+};
 
 module.exports = mongoose.model('Student', studentSchema);

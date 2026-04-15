@@ -40,7 +40,7 @@ exports.chat = async (req, res) => {
 exports.getNotifications = async (req, res) => {
   try {
     const { Student, Assignment, Grade } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
 
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
@@ -82,7 +82,7 @@ Return as JSON array with format: [{"title": "...", "message": "...", "urgency":
 exports.getPredictions = async (req, res) => {
   try {
     const { Student, Grade, Assignment } = require('../models');
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
 
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
@@ -126,9 +126,13 @@ exports.studyAssistant = async (req, res) => {
 
     const systemPrompt = `You are a knowledgeable study assistant. 
 Course Context: ${context || 'General'}
-Provide clear, educational answers. Use examples when helpful.`;
+Provide clear, educational answers. Return JSON format. Use the following structure for study plans:
+{
+  "strategySummary": "string",
+  "schedule": [{"day": "string", "tasks": [{"action": "string", "duration": "string", "reason": "string"}]}]
+}`;
 
-    const result = await callGemini(question, systemPrompt, false);
+    const result = await callGemini(question, systemPrompt, true);
 
     res.json({ answer: result });
   } catch (error) {

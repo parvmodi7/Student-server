@@ -3,34 +3,54 @@
  * Generates academic reports for students
  */
 
-const { User, Student, Course, Grade, Assignment } = require('../models');
+const { Student, Teacher, Course, Grade, Assignment } = require('../models');
+
+function getGPAPoints(letterGrade) {
+  const gradePoints = {
+    'A+': 4.0, 'A': 4.0, 'A-': 3.7,
+    'B+': 3.3, 'B': 3.0, 'B-': 2.7,
+    'C+': 2.3, 'C': 2.0, 'C-': 1.7,
+    'D+': 1.3, 'D': 1.0, 'D-': 0.7,
+    'F': 0.0
+  };
+  return gradePoints[letterGrade] || 0;
+}
+
+function getLetterGrade(percentage) {
+  if (percentage >= 93) return 'A';
+  if (percentage >= 90) return 'A-';
+  if (percentage >= 87) return 'B+';
+  if (percentage >= 83) return 'B';
+  if (percentage >= 80) return 'B-';
+  if (percentage >= 77) return 'C+';
+  if (percentage >= 73) return 'C';
+  if (percentage >= 70) return 'C-';
+  if (percentage >= 67) return 'D+';
+  if (percentage >= 63) return 'D';
+  if (percentage >= 60) return 'D-';
+  return 'F';
+}
 
 exports.generateStudentReport = async (req, res) => {
   try {
-    const student = await Student.findOne({ userId: req.user.id });
+    const student = await Student.findById(req.user.id);
     if (!student) {
       return res.status(403).json({ error: 'Student profile not found' });
     }
 
-    const { Course, Grade, Assignment } = require('../models');
-
-    // Get enrolled courses
     const courses = await Course.find({ _id: { $in: student.enrolledCourses } })
       .populate('teacher', 'firstName lastName');
 
-    // Get all grades
     const grades = await Grade.find({ student: student._id })
       .populate('course', 'name courseCode credits')
       .populate('assignment', 'title type');
 
-    // Get upcoming assignments
     const upcomingAssignments = await Assignment.find({
       course: { $in: student.enrolledCourses },
       dueDate: { $gte: new Date() },
       isPublished: true
     }).populate('course', 'name').limit(5);
 
-    // Calculate GPA
     let totalPoints = 0;
     let totalCredits = 0;
     grades.forEach(g => {
@@ -41,7 +61,6 @@ exports.generateStudentReport = async (req, res) => {
     });
     const gpa = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : '0.00';
 
-    // Grade distribution
     const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
     grades.forEach(g => {
       const letter = g.letterGrade?.charAt(0) || 'F';
@@ -50,10 +69,9 @@ exports.generateStudentReport = async (req, res) => {
       }
     });
 
-    // Build comprehensive report
     const report = {
       student: {
-        name: `${req.user.firstName} ${req.user.lastName}`,
+        name: `${student.firstName} ${student.lastName}`,
         studentId: student.studentId,
         major: student.major,
         graduationYear: student.graduationYear,
@@ -85,7 +103,7 @@ exports.generateStudentReport = async (req, res) => {
         course: g.course?.name,
         assignment: g.assignment?.title || 'Overall',
         grade: g.letterGrade,
-        percentage: g.percentage.toFixed(1),
+        percentage: g.percentage ? g.percentage.toFixed(1) : 'N/A',
         date: g.gradedAt
       })),
       upcomingDeadlines: upcomingAssignments.map(a => ({
@@ -105,7 +123,7 @@ exports.generateStudentReport = async (req, res) => {
 
 exports.generateTeacherCourseReport = async (req, res) => {
   try {
-    const teacher = await Teacher.findOne({ userId: req.user.id });
+    const teacher = await Teacher.findById(req.user.id);
     if (!teacher) {
       return res.status(403).json({ error: 'Teacher profile not found' });
     }
@@ -115,13 +133,11 @@ exports.generateTeacherCourseReport = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    const students = await Student.find({ enrolledCourses: course._id })
-      .populate('userId', 'firstName lastName email');
+    const students = await Student.find({ _id: { $in: course.enrolledStudents } });
 
     const assignments = await Assignment.find({ course: course._id });
     const grades = await Grade.find({ course: course._id });
 
-    // Calculate stats
     const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
     const studentStats = [];
     
@@ -138,7 +154,7 @@ exports.generateTeacherCourseReport = async (req, res) => {
       }
 
       studentStats.push({
-        name: student.userId ? `${student.userId.firstName} ${student.userId.lastName}` : 'Unknown',
+        name: `${student.firstName} ${student.lastName}`,
         studentId: student.studentId,
         average: avg.toFixed(1),
         letterGrade,
@@ -170,8 +186,8 @@ exports.generateTeacherCourseReport = async (req, res) => {
         type: a.type,
         dueDate: a.dueDate,
         totalPoints: a.totalPoints,
-        submissions: a.submissions.length,
-        averageScore: a.submissions.length > 0
+        submissions: a.submissions ? a.submissions.length : 0,
+        averageScore: a.submissions && a.submissions.length > 0
           ? (a.submissions.reduce((sum, s) => sum + (s.grade || 0), 0) / a.submissions.length).toFixed(1)
           : 'N/A'
       })),
@@ -183,30 +199,4 @@ exports.generateTeacherCourseReport = async (req, res) => {
     console.error('[GENERATE COURSE REPORT ERROR]', error);
     res.status(500).json({ error: 'Failed to generate report' });
   }
-};
-
-const getGPAPoints = (letterGrade) => {
-  const gradePoints = {
-    'A+': 4.0, 'A': 4.0, 'A-': 3.7,
-    'B+': 3.3, 'B': 3.0, 'B-': 2.7,
-    'C+': 2.3, 'C': 2.0, 'C-': 1.7,
-    'D+': 1.3, 'D': 1.0, 'D-': 0.7,
-    'F': 0.0
-  };
-  return gradePoints[letterGrade] || 0;
-};
-
-const getLetterGrade = (percentage) => {
-  if (percentage >= 93) return 'A';
-  if (percentage >= 90) return 'A-';
-  if (percentage >= 87) return 'B+';
-  if (percentage >= 83) return 'B';
-  if (percentage >= 80) return 'B-';
-  if (percentage >= 77) return 'C+';
-  if (percentage >= 73) return 'C';
-  if (percentage >= 70) return 'C-';
-  if (percentage >= 67) return 'D+';
-  if (percentage >= 63) return 'D';
-  if (percentage >= 60) return 'D-';
-  return 'F';
 };
