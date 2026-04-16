@@ -40,6 +40,9 @@ exports.getAllCourses = async (req, res) => {
 // Get single course details
 exports.getCourse = async (req, res) => {
   try {
+    if (!req.params.id || req.params.id === 'undefined') {
+      return res.status(400).json({ error: 'Course ID is required' });
+    }
     const { Course } = require('../models');
     const course = await Course.findById(req.params.id)
       .populate('teacher', 'userId firstName lastName department')
@@ -106,6 +109,33 @@ exports.updateCourse = async (req, res) => {
   } catch (error) {
     console.error('[UPDATE COURSE ERROR]', error);
     res.status(500).json({ error: 'Failed to update course' });
+  }
+};
+
+// Delete course (Teacher only)
+exports.deleteCourse = async (req, res) => {
+  try {
+    const { Course } = require('../models');
+    const course = await Course.findById(req.params.id);
+
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Check ownership
+    const { Teacher } = require('../models');
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    course.isActive = false;
+    await course.save();
+
+    res.json({ message: 'Course deleted successfully' });
+  } catch (error) {
+    console.error('[DELETE COURSE ERROR]', error);
+    res.status(500).json({ error: 'Failed to delete course' });
   }
 };
 

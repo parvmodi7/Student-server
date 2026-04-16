@@ -16,6 +16,7 @@ const studentRoutes = require('./student');
 const teacherRoutes = require('./teacher');
 const reportRoutes = require('./reports');
 const gamificationRoutes = require('./gamification');
+const questionRoutes = require('./questions');
 
 router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
@@ -28,6 +29,7 @@ router.use('/schedules', scheduleRoutes);
 router.use('/ai', aiRoutes);
 router.use('/reports', reportRoutes);
 router.use('/gamification', gamificationRoutes);
+router.use('/questions', questionRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

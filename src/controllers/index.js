@@ -12,5 +12,6 @@ module.exports = {
   studentController: require('./studentController'),
   teacherController: require('./teacherController'),
   reportController: require('./reportController'),
-  gamificationController: require('./gamificationController')
+  gamificationController: require('./gamificationController'),
+  questionController: require('./questionController')
 };

@@ -6,6 +6,16 @@ const NodeCache = require('node-cache');
 
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 
+function toPlainObject(data) {
+  if (data === null || data === undefined) return data;
+  try {
+    return JSON.parse(JSON.stringify(data));
+  } catch (e) {
+    console.error('[CACHE] Failed to serialize data:', e.message);
+    return data;
+  }
+}
+
 function cacheMiddleware(ttl) {
   return function(req, res, next) {
     if (req.method !== 'GET') {
@@ -23,7 +33,8 @@ function cacheMiddleware(ttl) {
     var originalJson = res.json.bind(res);
     res.json = function(data) {
       if (res.statusCode === 200) {
-        cache.set(key, data, ttl);
+        var cacheData = toPlainObject(data);
+        cache.set(key, cacheData, ttl);
         console.log('[CACHE SET] ' + key + ' for ' + ttl + 's');
       }
       return originalJson(data);

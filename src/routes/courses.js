@@ -23,8 +23,6 @@ const { auth, cacheMiddleware } = require('../middleware');
 // ============ PUBLIC ROUTES (Cached) ============
 // GET /api/courses - Get all available courses
 router.get('/', cacheMiddleware(300), courseController.getAllCourses);
-// GET /api/courses/:id - Get course by ID
-router.get('/:id', cacheMiddleware(300), courseController.getCourse);
 
 // ============ STUDENT ROUTES ============
 // GET /api/courses/student/courses - Get courses student is enrolled in
@@ -37,7 +35,12 @@ router.post('/:id/enroll', auth(['student']), courseController.enrollCourse);
 router.get('/teacher/courses', auth(['teacher']), courseController.getTeacherCourses);
 // POST /api/courses - Create new course
 router.post('/', auth(['teacher']), courseController.createCourse);
+
+// GET /api/courses/:id - Get course by ID (MUST be after specific routes)
+router.get('/:id', cacheMiddleware(300), courseController.getCourse);
 // PUT /api/courses/:id - Update course details
 router.put('/:id', auth(['teacher']), courseController.updateCourse);
+// DELETE /api/courses/:id - Delete course
+router.delete('/:id', auth(['teacher']), courseController.deleteCourse);
 
 module.exports = router;

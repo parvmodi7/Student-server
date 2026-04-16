@@ -40,6 +40,57 @@ const generateCacheKey = (prompt, systemPrompt) => {
 };
 
 /**
+ * Get mock study plan data when API fails
+ */
+const getMockStudyPlan = () => {
+  return {
+    strategySummary: "Based on your enrolled courses, here's a balanced weekly schedule focusing on fundamentals and practice.",
+    schedule: [
+      { day: "Monday", tasks: [
+        { action: "Review Data Structures lecture notes", duration: "45 min", reason: "Strengthen core concepts" },
+        { action: "Practice array problems", duration: "30 min", reason: "Apply learned concepts" }
+      ]},
+      { day: "Tuesday", tasks: [
+        { action: "Work on Programming assignment", duration: "60 min", reason: "Meet upcoming deadline" },
+        { action: "Watch concept videos", duration: "30 min", reason: "Visual learning" }
+      ]},
+      { day: "Wednesday", tasks: [
+        { action: "Review Mathematics concepts", duration: "45 min", reason: "Build strong foundation" },
+        { action: "Solve practice problems", duration: "30 min", reason: "Practice makes perfect" }
+      ]},
+      { day: "Thursday", tasks: [
+        { action: "Programming practice", duration: "45 min", reason: "Improve coding skills" },
+        { action: "Debug previous assignments", duration: "30 min", reason: "Learn from mistakes" }
+      ]},
+      { day: "Friday", tasks: [
+        { action: "Weekly review session", duration: "60 min", reason: "Consolidate learning" },
+        { action: "Preview next week's topics", duration: "30 min", reason: "Stay ahead" }
+      ]}
+    ]
+  };
+};
+
+/**
+ * Retry wrapper with exponential backoff
+ */
+const retryRequest = async (fn, maxRetries = 3) => {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      // If 503 (high demand) or rate limit, retry
+      if ((error.response?.status === 503 || error.code === 'ERR_BAD_RESPONSE') && i < maxRetries - 1) {
+        const waitTime = Math.pow(2, i) * 1000;
+        console.log(`[GEMINI] Retry ${i + 1}/${maxRetries} after ${waitTime}ms...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+      throw error;
+    }
+  }
+};
+
+/**
  * Call Gemini API with caching and rate limiting
  * @param {string} prompt - User prompt
  * @param {string} systemPrompt - System instructions
@@ -69,13 +120,15 @@ const callGemini = async (prompt, systemPrompt, useJson = false) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   try {
-    const response = await axios.post(url, {
-      contents: [{ parts: [{ text: prompt }] }],
-      systemInstruction: { parts: [{ text: systemPrompt }] },
-      generationConfig: useJson ? { responseMimeType: "application/json" } : {}
-    }, {
-      headers: { 'Content-Type': 'application/json' },
-      timeout: 30000
+    const response = await retryRequest(async () => {
+      return await axios.post(url, {
+        contents: [{ parts: [{ text: prompt }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: useJson ? { responseMimeType: "application/json" } : {}
+      }, {
+        headers: { 'Content-Type': 'application/json' },
+        timeout: 30000
+      });
     });
 
     requestCount++;
@@ -94,7 +147,14 @@ const callGemini = async (prompt, systemPrompt, useJson = false) => {
     
     return result;
   } catch (error) {
-    console.error('[GEMINI ERROR]', error.message);
+    console.error('[GEMINI ERROR]', error.response?.data?.error?.message || error.message);
+    
+    // If it's a rate limit or high demand error, return mock data
+    if (error.response?.status === 503 || error.code === 'ERR_BAD_RESPONSE') {
+      console.log('[GEMINI] API unavailable, returning mock data');
+      return getMockStudyPlan();
+    }
+    
     throw error;
   }
 };
