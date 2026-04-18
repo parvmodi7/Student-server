@@ -97,7 +97,7 @@ const retryRequest = async (fn, maxRetries = 3) => {
  * @param {boolean} useJson - Return JSON response
  * @returns {Promise<object|string>} - API response
  */
-const callGemini = async (prompt, systemPrompt, useJson = false) => {
+const callGemini = async (prompt, systemPrompt, useJson = false, modelName = null) => {
   const cacheKey = generateCacheKey(prompt, systemPrompt);
   
   // Check cache first
@@ -111,13 +111,13 @@ const callGemini = async (prompt, systemPrompt, useJson = false) => {
   await waitIfNeeded();
 
   const apiKey = process.env.GEMINI_API_KEY;
-  const modelName = process.env.GEMINI_MODEL_NAME || 'gemini-2.5-flash';
+  const activeModel = modelName || process.env.GEMINI_MODEL_NAME || 'gemini-2.5-flash-lite';
   
   if (!apiKey) {
     throw new Error('GEMINI_API_KEY not configured');
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
   try {
     const response = await retryRequest(async () => {
@@ -140,16 +140,18 @@ const callGemini = async (prompt, systemPrompt, useJson = false) => {
       throw new Error('No content in Gemini response');
     }
 
-    const result = useJson ? JSON.parse(text) : text;
+    let result;
+    try {
+      result = useJson ? JSON.parse(text) : text;
+    } catch {
+      result = text;
+    }
     
-    // Cache successful response
     responseCache.set(cacheKey, result);
-    
     return result;
   } catch (error) {
     console.error('[GEMINI ERROR]', error.response?.data?.error?.message || error.message);
     
-    // If it's a rate limit or high demand error, return mock data
     if (error.response?.status === 503 || error.code === 'ERR_BAD_RESPONSE') {
       console.log('[GEMINI] API unavailable, returning mock data');
       return getMockStudyPlan();
