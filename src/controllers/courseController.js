@@ -88,15 +88,13 @@ exports.createCourse = async (req, res) => {
 // Update course (Teacher only)
 exports.updateCourse = async (req, res) => {
   try {
-    const { Course } = require('../models');
+    const { Course, Teacher } = require('../models');
     const course = await Course.findById(req.params.id);
 
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    // Check ownership
-    const { Teacher } = require('../models');
     const teacher = await Teacher.findById(req.user.id);
     if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
@@ -115,15 +113,13 @@ exports.updateCourse = async (req, res) => {
 // Delete course (Teacher only)
 exports.deleteCourse = async (req, res) => {
   try {
-    const { Course } = require('../models');
+    const { Course, Teacher } = require('../models');
     const course = await Course.findById(req.params.id);
 
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    // Check ownership
-    const { Teacher } = require('../models');
     const teacher = await Teacher.findById(req.user.id);
     if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
       return res.status(403).json({ error: 'Not authorized' });
@@ -216,5 +212,88 @@ exports.getStudentCourses = async (req, res) => {
   } catch (error) {
     console.error('[GET STUDENT COURSES ERROR]', error);
     res.status(500).json({ error: 'Failed to get courses' });
+  }
+};
+
+// Teacher enrolls a specific student in their course
+exports.enrollStudentByTeacher = async (req, res) => {
+  try {
+    const { Course, Student, Teacher } = require('../models');
+    const { studentId } = req.body;
+
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    if (course.enrolledStudents.includes(student._id)) {
+      return res.status(400).json({ error: 'Student already enrolled' });
+    }
+
+    if (course.enrolledStudents.length >= course.maxStudents) {
+      return res.status(400).json({ error: 'Course is full' });
+    }
+
+    course.enrolledStudents.push(student._id);
+    await course.save();
+
+    if (!student.enrolledCourses.includes(course._id)) {
+      student.enrolledCourses.push(course._id);
+      await student.save();
+    }
+
+    res.json({ message: 'Student enrolled successfully' });
+  } catch (error) {
+    console.error('[ENROLL STUDENT BY TEACHER ERROR]', error);
+    res.status(500).json({ error: 'Failed to enroll student' });
+  }
+};
+
+// Teacher removes a student from their course
+exports.removeStudentByTeacher = async (req, res) => {
+  try {
+    const { Course, Student, Teacher } = require('../models');
+    const { studentId } = req.body;
+
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    // Check ownership
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    course.enrolledStudents = course.enrolledStudents.filter(
+      (id) => id.toString() !== studentId
+    );
+    await course.save();
+
+    student.enrolledCourses = student.enrolledCourses.filter(
+      (id) => id.toString() !== course._id.toString()
+    );
+    await student.save();
+
+    res.json({ message: 'Student removed successfully' });
+  } catch (error) {
+    console.error('[REMOVE STUDENT BY TEACHER ERROR]', error);
+    res.status(500).json({ error: 'Failed to remove student' });
   }
 };

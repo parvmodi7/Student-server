@@ -43,4 +43,8 @@ router.put('/:id', auth(['teacher']), courseController.updateCourse);
 // DELETE /api/courses/:id - Delete course
 router.delete('/:id', auth(['teacher']), courseController.deleteCourse);
 
+// Teacher manages student enrollments
+router.post('/:id/enroll', auth(['teacher']), courseController.enrollStudentByTeacher);
+router.post('/:id/unenroll', auth(['teacher']), courseController.removeStudentByTeacher);
+
 module.exports = router;
