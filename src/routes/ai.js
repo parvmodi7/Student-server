@@ -35,6 +35,10 @@ router.get('/notifications', auth(['student']), cacheMiddleware(300), aiControll
 router.get('/predictions', auth(['student']), cacheMiddleware(600), aiController.getPredictions);
 // POST /api/ai/study - Ask AI study questions
 router.post('/study', auth(['student']), aiController.studyAssistant);
+// POST /api/ai/advisor - AI advisor chat with persona + memory
+router.post('/advisor', auth(['student']), aiController.advisorChat);
+// GET /api/ai/study-plan - Generate AI study plan based on quiz performance
+router.get('/study-plan', auth(['student']), aiController.generatePersonalizedStudyPlan);
 
 // ============ TEACHER ROUTES ============
 // POST /api/ai/feedback - Generate AI-powered student feedback

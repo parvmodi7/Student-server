@@ -15,7 +15,7 @@ const { gamificationController } = require('../controllers');
 const { auth, cacheMiddleware } = require('../middleware');
 
 // GET /api/gamification/profile - Get XP, level, streak, achievements
-router.get('/profile', auth(['student']), cacheMiddleware(60), gamificationController.getProfile);
+router.get('/profile', auth(['student']), gamificationController.getProfile);
 
 // POST /api/gamification/activity - Record an activity to earn XP (submit assignment, etc.)
 router.post('/activity', auth(['student']), gamificationController.recordActivity);

@@ -14,7 +14,7 @@ const achievementSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['streak', 'grade', 'assignment', 'attendance', 'milestone', 'special'],
+    enum: ['streak', 'grade', 'assignment', 'attendance', 'milestone', 'special', 'quiz'],
     required: true
   },
   name: {
@@ -92,7 +92,27 @@ const gamificationSchema = new mongoose.Schema({
     progress: Number,
     completed: Boolean,
     expiresAt: Date
-  }]
+  }],
+  totalQuestionsAnswered: {
+    type: Number,
+    default: 0
+  },
+  totalCorrectAnswers: {
+    type: Number,
+    default: 0
+  },
+  consecutiveCorrect: {
+    type: Number,
+    default: 0
+  },
+  subjectStats: {
+    type: Map,
+    of: {
+      attempted: { type: Number, default: 0 },
+      correct: { type: Number, default: 0 }
+    },
+    default: new Map()
+  }
 }, { timestamps: true });
 
 const XP_CONFIG = {
@@ -120,18 +140,24 @@ const LEVELS = [
 ];
 
 const ACHIEVEMENT_DEFINITIONS = [
+  // Streak achievements
   { type: 'streak', name: 'First Step', description: 'Complete 3-day streak', icon: '🔥', xpBonus: 50, condition: (g) => g.currentStreak >= 3 },
   { type: 'streak', name: 'Week Warrior', description: 'Complete 7-day streak', icon: '💪', xpBonus: 100, condition: (g) => g.currentStreak >= 7 },
   { type: 'streak', name: 'Month Master', description: 'Complete 30-day streak', icon: '🏆', xpBonus: 500, condition: (g) => g.currentStreak >= 30 },
-  { type: 'grade', name: 'Grade A', description: 'Get your first A grade', icon: '⭐', xpBonus: 50, condition: (g) => g.totalAssignmentsCompleted >= 1 },
-  { type: 'grade', name: 'Perfect Score', description: 'Score 100% on any assignment', icon: '💯', xpBonus: 150, condition: (g) => g.totalAssignmentsCompleted >= 5 },
+  // Original achievements
   { type: 'assignment', name: 'First Submission', description: 'Submit your first assignment', icon: '📝', xpBonus: 25, condition: (g) => g.totalAssignmentsCompleted >= 1 },
   { type: 'assignment', name: 'Productive', description: 'Submit 10 assignments', icon: '📚', xpBonus: 100, condition: (g) => g.totalAssignmentsCompleted >= 10 },
-  { type: 'assignment', name: 'Assignment Pro', description: 'Submit 50 assignments', icon: '🎓', xpBonus: 300, condition: (g) => g.totalAssignmentsCompleted >= 50 },
-  { type: 'attendance', name: 'Present', description: 'Attend your first class', icon: '✅', xpBonus: 20, condition: (g) => g.totalStudyHours >= 1 },
-  { type: 'attendance', name: 'Dedicated', description: 'Study for 10 hours', icon: '📖', xpBonus: 100, condition: (g) => g.totalStudyHours >= 10 },
   { type: 'milestone', name: 'Level Up', description: 'Reach level 5', icon: '⬆️', xpBonus: 200, condition: (g) => g.level >= 5 },
-  { type: 'milestone', name: 'XP Hunter', description: 'Earn 1000 XP', icon: '🎯', xpBonus: 200, condition: (g) => g.xp >= 1000 }
+  { type: 'milestone', name: 'XP Hunter', description: 'Earn 1000 XP', icon: '🎯', xpBonus: 200, condition: (g) => g.xp >= 1000 },
+  // Quiz-based achievements
+  { type: 'quiz', name: 'First Answer', description: 'Answer your first question', icon: '🎯', xpBonus: 10, condition: (g) => g.totalQuestionsAnswered >= 1 },
+  { type: 'quiz', name: 'Quiz Starter', description: 'Answer 10 questions', icon: '📝', xpBonus: 50, condition: (g) => g.totalQuestionsAnswered >= 10 },
+  { type: 'quiz', name: 'Easy Master', description: 'Get 5 Easy questions correct in a row', icon: '🟢', xpBonus: 75, condition: (g) => g.consecutiveCorrect >= 5 },
+  { type: 'quiz', name: 'Perfectionist', description: '5 correct answers in a row', icon: '⚡', xpBonus: 100, condition: (g) => g.consecutiveCorrect >= 5 },
+  { type: 'quiz', name: 'Marathon Runner', description: 'Answer 50 questions total', icon: '🏃', xpBonus: 150, condition: (g) => g.totalQuestionsAnswered >= 50 },
+  { type: 'quiz', name: 'Scholar', description: 'Answer 100 questions total', icon: '🎓', xpBonus: 300, condition: (g) => g.totalQuestionsAnswered >= 100 },
+  { type: 'quiz', name: 'Sharp Shooter', description: '80%+ accuracy with 20+ answers', icon: '🏆', xpBonus: 200, condition: (g) => g.totalQuestionsAnswered >= 20 && (g.totalCorrectAnswers / g.totalQuestionsAnswered) >= 0.8 },
+  { type: 'quiz', name: 'Grandmaster', description: '90%+ accuracy with 50+ answers', icon: '👑', xpBonus: 500, condition: (g) => g.totalQuestionsAnswered >= 50 && (g.totalCorrectAnswers / g.totalQuestionsAnswered) >= 0.9 }
 ];
 
 module.exports = {

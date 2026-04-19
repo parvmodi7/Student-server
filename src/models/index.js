@@ -9,5 +9,6 @@ module.exports = {
   Assignment: require('./Assignment'),
   Grade: require('./Grade'),
   Schedule: require('./Schedule'),
-  Question: require('./Question')
+  Question: require('./Question'),
+  QuizAttempt: require('./QuizAttempt')
 };

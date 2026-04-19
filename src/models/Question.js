@@ -40,6 +40,10 @@ const questionSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  explanation: {
+    type: String,
+    default: ''
+  },
   marks: {
     type: Number,
     default: 10

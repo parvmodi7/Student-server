@@ -27,8 +27,10 @@ const canMakeRequest = () => {
 };
 
 const waitIfNeeded = async () => {
+  // Wait if rate limited
   while (!canMakeRequest()) {
     const waitTime = 60000 - (Date.now() - lastReset);
+    console.log(`[GEMINI] Rate limited, waiting ${Math.ceil(waitTime/1000)}s...`);
     await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, 5000)));
   }
 };
@@ -117,14 +119,20 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
     throw new Error('GEMINI_API_KEY not configured');
   }
 
+  console.log('[GEMINI] Calling API with useJson:', useJson, 'model:', activeModel);
+  
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
+
+  const generationConfig = useJson 
+    ? { responseMimeType: "application/json", temperature: 0.7, maxOutputTokens: 8192 }
+    : { temperature: 0.7, maxOutputTokens: 8192 };
 
   try {
     const response = await retryRequest(async () => {
       return await axios.post(url, {
         contents: [{ parts: [{ text: prompt }] }],
         systemInstruction: { parts: [{ text: systemPrompt }] },
-        generationConfig: useJson ? { responseMimeType: "application/json" } : {}
+        generationConfig
       }, {
         headers: { 'Content-Type': 'application/json' },
         timeout: 30000
@@ -132,7 +140,8 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
     });
 
     requestCount++;
-    console.log(`[GEMINI REQUEST] Count: ${requestCount}`);
+    console.log(`[GEMINI REQUEST] Count: ${requestCount}, response status:`, response.status);
+    console.log('[GEMINI] Response data:', JSON.stringify(response.data).slice(0, 500));
 
     const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
     
