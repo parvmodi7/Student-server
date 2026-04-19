@@ -38,6 +38,18 @@ exports.getQuestionsBySubject = async (req, res) => {
 exports.getQuestionsByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
+    const studentId = req.user.id;
+    
+    // Verify enrollment
+    const course = await Course.findOne({
+      _id: courseId,
+      enrolledStudents: studentId,
+      isActive: true
+    });
+    
+    if (!course) {
+      return res.status(403).json({ error: 'You are not enrolled in this course.' });
+    }
     
     const questions = await Question.find({ 
       course: courseId,
@@ -69,6 +81,24 @@ exports.getQuestionsByDifficulty = async (req, res) => {
     const { subject } = req.params;
     const { difficulty = 'Easy', limit = 10 } = req.query;
     const studentId = req.user.id;
+
+    // First, verify student is enrolled in a course with this subject name
+    const enrolledCourses = await Course.find({
+      enrolledStudents: studentId,
+      isActive: true
+    }).select('name courseCode');
+
+    const enrolledNames = enrolledCourses.map(c => c.name);
+    const normalizedSubject = subject.trim();
+
+    // Check if the requested subject matches an enrolled course
+    const isEnrolled = enrolledNames.some(name => 
+      name.toLowerCase() === normalizedSubject.toLowerCase()
+    );
+
+    if (!isEnrolled) {
+      return res.status(403).json({ error: 'You are not enrolled in this course. You can only practice questions for courses you are enrolled in.' });
+    }
 
     // Get IDs of questions already answered by this student for this subject+difficulty
     const answeredAttempts = await QuizAttempt.find({
@@ -116,6 +146,74 @@ exports.getQuestionsByDifficulty = async (req, res) => {
     });
   } catch (error) {
     console.error('[GET QUESTIONS BY DIFFICULTY ERROR]', error);
+    res.status(500).json({ error: 'Failed to get questions' });
+  }
+};
+
+// Get MCQ questions by course ID (secure version - uses course reference)
+exports.getQuestionsByCourseId = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { difficulty = 'Easy', limit = 10 } = req.query;
+    const studentId = req.user.id;
+
+    // Verify student is enrolled in this course
+    const course = await Course.findOne({
+      _id: courseId,
+      enrolledStudents: studentId,
+      isActive: true
+    });
+
+    if (!course) {
+      return res.status(403).json({ error: 'You are not enrolled in this course.' });
+    }
+
+    // Get IDs of questions already answered by this student for this course+difficulty
+    const answeredAttempts = await QuizAttempt.find({
+      student: studentId,
+      course: courseId,
+      difficulty
+    }).select('question');
+    const answeredIds = answeredAttempts.map(a => a.question);
+
+    // Find unanswered questions first
+    let questions = await Question.find({
+      course: courseId,
+      difficulty,
+      type: 'multiple-choice',
+      isActive: true,
+      _id: { $nin: answeredIds }
+    }).select('-idealAnswer -explanation').limit(parseInt(limit));
+
+    // If not enough unanswered questions, include already answered ones
+    if (questions.length < parseInt(limit)) {
+      const remaining = parseInt(limit) - questions.length;
+      const additionalQuestions = await Question.find({
+        course: courseId,
+        difficulty,
+        type: 'multiple-choice',
+        isActive: true,
+        _id: { $in: answeredIds }
+      }).select('-idealAnswer -explanation').limit(remaining);
+      questions = [...questions, ...additionalQuestions];
+    }
+
+    res.json({
+      questions: questions.map(q => ({
+        _id: q._id,
+        subject: q.subject,
+        question: q.question,
+        type: q.type,
+        options: q.options.map(o => ({ text: o.text })),
+        hint: q.hint,
+        marks: q.marks,
+        difficulty: q.difficulty
+      })),
+      total: questions.length,
+      difficulty
+    });
+  } catch (error) {
+    console.error('[GET QUESTIONS BY COURSE ID ERROR]', error);
     res.status(500).json({ error: 'Failed to get questions' });
   }
 };
@@ -392,14 +490,28 @@ exports.createQuestion = async (req, res) => {
   try {
     const { course, subject, question, type, options, idealAnswer, hint, explanation, marks, difficulty } = req.body;
 
-    if (!course || !subject || !question) {
-      return res.status(400).json({ error: 'Course, subject and question are required' });
+    if (!course || !question) {
+      return res.status(400).json({ error: 'Course and question are required' });
+    }
+
+    // Validate course exists and belongs to this teacher
+    const courseDoc = await Course.findOne({ _id: course, teacher: req.user.id });
+    if (!courseDoc) {
+      return res.status(400).json({ error: 'Invalid course. You can only create questions for your assigned courses.' });
+    }
+
+    // Auto-set subject from course name (enforce data integrity)
+    const courseName = courseDoc.name;
+
+    // If subject is provided, validate it matches course name
+    if (subject && subject !== courseName) {
+      return res.status(400).json({ error: `Subject must match the course name: ${courseName}` });
     }
 
     const newQuestion = await Question.create({
       course,
       teacher: req.user.id,
-      subject,
+      subject: courseName, // Always use course name as subject
       question,
       type: type || 'multiple-choice',
       options: type === 'multiple-choice' ? options : undefined,
@@ -433,6 +545,28 @@ exports.updateQuestion = async (req, res) => {
 
     if (question.teacher.toString() !== req.user.id) {
       return res.status(403).json({ error: 'Not authorized to update this question' });
+    }
+
+    // If course is being updated, validate it belongs to teacher
+    if (updates.course && updates.course.toString() !== question.course.toString()) {
+      const courseDoc = await Course.findOne({ _id: updates.course, teacher: req.user.id });
+      if (!courseDoc) {
+        return res.status(400).json({ error: 'Invalid course. You can only assign questions to your assigned courses.' });
+      }
+      // Validate subject matches new course name
+      if (updates.subject && updates.subject !== courseDoc.name) {
+        return res.status(400).json({ error: `Subject must match the course name: ${courseDoc.name}` });
+      }
+      // Auto-update subject to match new course
+      updates.subject = courseDoc.name;
+    }
+
+    // If subject is being updated, validate it matches current course name
+    if (updates.subject && question.course) {
+      const courseDoc = await Course.findById(question.course);
+      if (courseDoc && updates.subject !== courseDoc.name) {
+        return res.status(400).json({ error: `Subject must match the course name: ${courseDoc.name}` });
+      }
     }
 
     Object.assign(question, updates);

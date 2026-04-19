@@ -272,7 +272,7 @@ exports.setStudentPassword = async (req, res) => {
 // Create a new student (teacher creates student)
 exports.createStudent = async (req, res) => {
   try {
-    const { email, password, firstName, lastName, studentId, major, graduationYear } = req.body;
+    const { email, password, firstName, lastName, studentId, major, graduationYear, enrolledCourses } = req.body;
 
     const existingStudent = await Student.findOne({ email });
     if (existingStudent) {
@@ -286,8 +286,16 @@ exports.createStudent = async (req, res) => {
       lastName,
       studentId: studentId || `STU-${Date.now()}`,
       major: major || 'Computer Science',
-      graduationYear
+      graduationYear,
+      enrolledCourses: enrolledCourses || []
     });
+
+    if (enrolledCourses && enrolledCourses.length > 0) {
+      await Course.updateMany(
+        { _id: { $in: enrolledCourses } },
+        { $addToSet: { enrolledStudents: student._id } }
+      );
+    }
 
     res.status(201).json({ 
       message: 'Student created successfully',

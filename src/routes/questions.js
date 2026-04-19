@@ -5,6 +5,7 @@
  * Student routes:
  * GET /api/questions/subjects              - Get available subjects with stats
  * GET /api/questions/practice/:subject     - Get MCQs by subject+difficulty (?difficulty=Easy)
+ * GET /api/questions/practice/course/:courseId - Get MCQs by course ID (more secure)
  * POST /api/questions/submit               - Submit an answer
  * GET /api/questions/performance            - Get performance analytics
  * GET /api/questions/subject/:subject      - Legacy: Get questions by subject
@@ -25,6 +26,7 @@ const { auth } = require('../middleware');
 // Student routes — Adaptive quiz
 router.get('/subjects', auth(['student']), questionController.getAvailableSubjects);
 router.get('/practice/:subject', auth(['student']), questionController.getQuestionsByDifficulty);
+router.get('/practice/course/:courseId', auth(['student']), questionController.getQuestionsByCourseId);
 router.post('/submit', auth(['student']), questionController.submitAnswer);
 router.get('/performance', auth(['student']), questionController.getPerformanceStats);
 

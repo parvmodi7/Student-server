@@ -73,7 +73,10 @@ exports.getDashboardData = async function(req, res) {
     res.json({
       student: {
         id: student.studentId,
-        name: student.firstName + ' ' + student.lastName,
+        firstName: student.firstName,
+        lastName: student.lastName,
+        name: ((student.firstName || '') + ' ' + (student.lastName || '')).trim() || 'Student',
+        email: student.email,
         major: student.major,
         semester: student.enrolledCourses ? student.enrolledCourses.length : 0,
         graduationYear: student.graduationYear

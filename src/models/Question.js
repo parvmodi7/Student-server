@@ -8,7 +8,7 @@ const questionSchema = new mongoose.Schema({
   course: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Course',
-    default: null
+    required: true
   },
   teacher: {
     type: mongoose.Schema.Types.ObjectId,
