@@ -28,8 +28,7 @@ exports.getDashboardData = async function(req, res) {
       .populate('teacher', 'firstName lastName');
 
     const grades = await Grade.find({ student: student._id })
-      .populate('course', 'name courseCode credits')
-      .populate('assignment', 'title totalPoints');
+      .populate('course', 'name courseCode credits');
 
     let totalPoints = 0;
     let totalCredits = 0;
@@ -117,7 +116,11 @@ exports.getDashboardData = async function(req, res) {
           course: g.course ? g.course.name : 'Unknown',
           courseCode: g.course ? g.course.courseCode : '',
           grade: g.letterGrade,
-          percentage: g.percentage ? g.percentage.toFixed(1) : 'N/A'
+          percentage: g.percentage ? g.percentage.toFixed(1) : 'N/A',
+          pdfUrl: g.pdfUrl || null,
+          title: g.title || null,
+          marksObtained: g.grade,
+          totalMarks: g.totalPoints
         };
       })
     });
@@ -216,7 +219,6 @@ exports.getResults = async function(req, res) {
 
     var grades = await Grade.find({ student: student._id })
       .populate({ path: 'course', select: 'name courseCode' })
-      .populate({ path: 'assignment', select: 'title type' })
       .sort({ gradedAt: -1 });
 
     var results = grades.map(function(g) {
@@ -224,13 +226,14 @@ exports.getResults = async function(req, res) {
         id: g._id,
         course: g.course ? g.course.name : 'Unknown',
         courseCode: g.course ? g.course.courseCode : '',
-        title: g.assignment ? g.assignment.title : 'Course Grade',
-        type: g.assignment ? g.assignment.type : 'overall',
+        title: g.title || 'Course Grade',
+        type: 'overall',
         examDate: g.gradedAt,
         marksObtained: g.grade,
         totalMarks: g.totalPoints,
         grade: g.letterGrade,
-        feedback: g.feedback
+        feedback: g.feedback,
+        pdfUrl: g.pdfUrl
       };
     });
 

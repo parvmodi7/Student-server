@@ -12,6 +12,15 @@ const connectDB = async () => {
       socketTimeoutMS: 45000,
     });
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+    
+    // Drop old duplicate index if exists
+    try {
+      await conn.connection.db.collection('grades').dropIndex('student_1_assignment_1');
+      console.log('Dropped old duplicate index student_1_assignment_1');
+    } catch (e) {
+      // Index may not exist, ignore error
+    }
+    
     return conn;
   } catch (error) {
     console.error('MongoDB connection error:', error.message);

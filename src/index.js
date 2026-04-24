@@ -29,6 +29,8 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
+const multer = require('multer');
+const path = require('path');
 
 const connectDB = require('./config/db');
 const routes = require('./routes');
@@ -36,6 +38,31 @@ const { apiLimiter } = require('./middleware');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, 'uploads'));
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + '-' + file.originalname);
+  }
+});
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'), false);
+    }
+  }
+});
+
+// Make uploads folder serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Connect to MongoDB
 connectDB();
@@ -56,11 +83,20 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' })); // Parse JSON bodies
 app.use(express.urlencoded({ extended: true }));
 
-// Apply general rate limiting
-app.use('/api', apiLimiter);
-
-// API Routes
-app.use('/api', routes);
+// File upload endpoint for teachers
+const router = require('express').Router();
+router.post('/upload', upload.single('file'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  res.json({ 
+    message: 'File uploaded successfully',
+    filename: req.file.filename,
+    url: fileUrl
+  });
+});
+app.use('/api', routes, router);
 
 // Root endpoint
 app.get('/', (req, res) => {

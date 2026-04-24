@@ -66,6 +66,7 @@ const studentSchema = new mongoose.Schema({
     percentage: Number
   }],
   notifications: [{
+    _id: { type: mongoose.Schema.Types.ObjectId, default: () => new mongoose.Types.ObjectId() },
     title: String,
     message: String,
     type: { type: String, enum: ['info', 'warning', 'urgent'] },

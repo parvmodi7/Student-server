@@ -52,4 +52,7 @@ router.post('/assignments', auth(['teacher']), teacherController.createAssignmen
 // POST /api/teacher/students - Create a new student account
 router.post('/students', auth(['teacher']), teacherController.createStudent);
 
+// POST /api/teacher/results - Publish results with PDF
+router.post('/results', auth(['teacher']), teacherController.publishResult);
+
 module.exports = router;

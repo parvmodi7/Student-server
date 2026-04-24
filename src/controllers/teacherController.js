@@ -4,6 +4,7 @@
  * Uses Teacher model directly (no User model)
  */
 
+const mongoose = require('mongoose');
 const { Teacher, Course, Assignment, Grade, Student } = require('../models');
 
 // Get teacher dashboard
@@ -305,4 +306,91 @@ exports.createStudent = async (req, res) => {
     console.error('[CREATE STUDENT ERROR]', error);
     res.status(500).json({ error: 'Failed to create student' });
   }
+};
+
+// Publish result with PDF for a course
+exports.publishResult = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher) {
+      return res.status(403).json({ error: 'Teacher profile not found' });
+    }
+
+    const { courseId, title, pdfUrl } = req.body;
+
+    // Get all students from all courses taught by this teacher
+    const courses = await Course.find({ teacher: teacher._id });
+    let totalStudents = 0;
+    
+    const results = [];
+    for (const course of courses) {
+      const students = await Student.find({ _id: { $in: course.enrolledStudents } });
+      totalStudents += students.length;
+
+      for (const student of students) {
+        // Try to update existing grade, or create new one
+        let grade = await Grade.findOne({ student: student._id, course: course._id });
+        
+        if (grade) {
+          grade.pdfUrl = pdfUrl;
+          grade.title = title || 'Result Published';
+          grade.gradedAt = new Date();
+          await grade.save();
+        } else {
+          grade = await Grade.create({
+            student: student._id,
+            course: course._id,
+            grade: 0,
+            totalPoints: 100,
+            percentage: 0,
+            letterGrade: 'N/A',
+            feedback: '',
+            gradedBy: teacher._id,
+            gradedAt: new Date(),
+            pdfUrl: pdfUrl,
+            title: title || 'Result Published'
+          });
+        }
+        results.push(grade);
+
+if (!student.notifications) {
+          student.notifications = [];
+        }
+        student.notifications.unshift({
+          _id: new mongoose.Types.ObjectId(),
+          title: 'New Result Published',
+          message: title ? `"${title}" has been published. Check your Academic Hub.` : 'New result has been published. Check your Academic Hub.',
+          type: 'info',
+          isRead: false,
+          createdAt: new Date()
+        });
+        await student.save();
+      }
+    }
+
+    res.status(201).json({ 
+      message: 'Results published successfully',
+      results,
+      studentsNotified: totalStudents
+    });
+  } catch (error) {
+    console.error('[PUBLISH RESULT ERROR]', error);
+    res.status(500).json({ error: 'Failed to publish results' });
+  }
+};
+
+const getLetterGrade = (percentage) => {
+  if (percentage >= 90) return 'A+';
+  if (percentage >= 85) return 'A';
+  if (percentage >= 80) return 'A-';
+  if (percentage >= 75) return 'B+';
+  if (percentage >= 70) return 'B';
+  if (percentage >= 65) return 'B-';
+  if (percentage >= 60) return 'C+';
+  if (percentage >= 55) return 'C';
+  if (percentage >= 50) return 'C-';
+  if (percentage >= 45) return 'D+';
+  if (percentage >= 40) return 'D';
+  if (percentage >= 35) return 'D-';
+  return 'F';
 };

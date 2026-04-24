@@ -17,31 +17,32 @@ const gradeSchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  assignment: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Assignment'
-  },
   grade: {
     type: Number,
     required: true,
-    min: 0
+    min: 0,
+    default: 0
   },
   totalPoints: {
     type: Number,
-    required: true
+    required: true,
+    default: 100
   },
   percentage: {
     type: Number,
     required: true,
     min: 0,
-    max: 100
+    max: 100,
+    default: 0
   },
   letterGrade: {
     type: String,
-    enum: ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F']
+    enum: ['A+', 'A', 'A-', 'B+', 'B', 'B-', 'C+', 'C', 'C-', 'D+', 'D', 'D-', 'F', 'N/A'],
+    default: 'N/A'
   },
   feedback: {
-    type: String
+    type: String,
+    default: ''
   },
   gradedBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -50,6 +51,12 @@ const gradeSchema = new mongoose.Schema({
   gradedAt: {
     type: Date,
     default: Date.now
+  },
+  pdfUrl: {
+    type: String
+  },
+  title: {
+    type: String
   }
 }, {
   timestamps: true
@@ -58,6 +65,6 @@ const gradeSchema = new mongoose.Schema({
 // Compound indexes for efficient queries
 gradeSchema.index({ student: 1, course: 1 });
 gradeSchema.index({ course: 1, student: 1 });
-gradeSchema.index({ student: 1, assignment: 1 }, { unique: true });
+gradeSchema.index({ student: 1, course: 1 }, { unique: true });
 
 module.exports = mongoose.model('Grade', gradeSchema);
