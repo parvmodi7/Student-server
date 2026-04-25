@@ -5,6 +5,7 @@
  */
 
 const { Student, Course, Assignment, Grade, Schedule } = require('../models');
+const websocketService = require('../services/websocket');
 
 function getGPAPoints(letterGrade) {
   const gradePoints = {
@@ -255,7 +256,19 @@ exports.getNotifications = async function(req, res) {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     }) : [];
 
-    res.json({ notifications: notifications });
+    // Auto-delete notifications older than 5 days
+    var fiveDaysAgo = new Date();
+    fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+    var originalCount = student.notifications ? student.notifications.length : 0;
+    student.notifications = student.notifications ? student.notifications.filter(function(n) {
+      return new Date(n.createdAt) > fiveDaysAgo;
+    }) : [];
+    if (student.notifications.length < originalCount) {
+      await student.save();
+      console.log('[NOTIFICATIONS] Auto-deleted ' + (originalCount - student.notifications.length) + ' old notifications');
+    }
+
+    res.json({ notifications: student.notifications });
   } catch (error) {
     console.error('[GET NOTIFICATIONS ERROR]', error);
     res.status(500).json({ error: 'Failed to get notifications' });
@@ -281,5 +294,45 @@ exports.markNotificationRead = async function(req, res) {
   } catch (error) {
     console.error('[MARK NOTIFICATION READ ERROR]', error);
     res.status(500).json({ error: 'Failed to mark notification' });
+  }
+};
+
+// Function to add a notification and broadcast via WebSocket
+exports.addNotification = async function(studentId, notificationData) {
+  try {
+    var student = await Student.findById(studentId);
+    if (!student) {
+      console.error('[ADD NOTIFICATION] Student not found:', studentId);
+      return;
+    }
+
+    if (!student.notifications) {
+      student.notifications = [];
+    }
+
+    // Use _id from notificationData if provided, otherwise create new ObjectId
+    var notification = {
+      _id: notificationData._id || require('mongoose').Types.ObjectId(),
+      title: notificationData.title,
+      message: notificationData.message,
+      type: notificationData.type || 'info',
+      isRead: false,
+      createdAt: new Date()
+    };
+
+    student.notifications.unshift(notification);
+    await student.save();
+
+    // Broadcast to student via WebSocket
+    websocketService.notifyStudent(studentId, {
+      type: 'new_notification',
+      notification: notification
+    });
+
+    console.log('[ADD NOTIFICATION] Notification added for student:', studentId);
+    return notification;
+  } catch (error) {
+    console.error('[ADD NOTIFICATION ERROR]', error);
+    throw error;
   }
 };

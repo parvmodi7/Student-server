@@ -374,7 +374,7 @@ if (!student.notifications) {
         student.notifications.unshift({
           _id: new mongoose.Types.ObjectId(),
           title: 'New Result Published',
-          message: title ? `"${title}" has been published. Check your Academic Hub.` : 'New result has been published. Check your Academic Hub.',
+          message: title ? `"${title}" has been published. Check your Dojo.` : 'New result has been published. Check your Dojo.',
           type: 'info',
           isRead: false,
           createdAt: new Date()

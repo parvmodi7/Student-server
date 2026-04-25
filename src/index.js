@@ -31,13 +31,91 @@ const helmet = require('helmet');
 const compression = require('compression');
 const multer = require('multer');
 const path = require('path');
+const { WebSocketServer } = require('ws');
 
 const connectDB = require('./config/db');
 const routes = require('./routes');
 const { apiLimiter } = require('./middleware');
+const websocketService = require('./services/websocket');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// WebSocket Server Setup
+const server = require('http').createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws' });
+
+wss.on('connection', (ws, req) => {
+  console.log('[WS] New client connected');
+  
+  ws.isAlive = true;
+  
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
+
+  ws.on('message', async (message) => {
+    try {
+      const data = JSON.parse(message.toString());
+      
+      // Handle authentication
+      if (data.type === 'auth') {
+        const jwt = require('jsonwebtoken');
+        try {
+          const decoded = jwt.verify(
+            data.token,
+            process.env.JWT_SECRET || 'default-secret'
+          );
+          ws.userId = decoded.id;
+          ws.role = decoded.role;
+          websocketService.addClient(decoded.id, ws);
+          ws.send(JSON.stringify({ type: 'auth_success', userId: decoded.id }));
+          console.log('[WS] Client authenticated:', decoded.id, decoded.role);
+        } catch (err) {
+          ws.send(JSON.stringify({ type: 'auth_error', error: 'Invalid token' }));
+        }
+      }
+      
+      // Handle ping for keepalive
+      if (data.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
+      }
+    } catch (err) {
+      console.error('[WS] Message error:', err);
+    }
+  });
+
+  ws.on('close', () => {
+    if (ws.userId) {
+      websocketService.removeClient(ws.userId, ws);
+      console.log('[WS] Client disconnected:', ws.userId);
+    }
+  });
+
+  ws.on('error', (err) => {
+    console.error('[WS] Error:', err);
+  });
+});
+
+// Heartbeat to detect dead connections
+const interval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      if (ws.userId) {
+        websocketService.removeClient(ws.userId, ws);
+      }
+      return ws.terminate();
+    }
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000);
+
+wss.on('close', () => {
+  clearInterval(interval);
+});
+
+console.log('[WS] WebSocket server initialized on /ws');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -125,10 +203,11 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📚 Student Front: ${process.env.STUDENT_FRONT_URL || 'http://localhost:3000'}`);
   console.log(`📝 Teacher Panel: ${process.env.TEACHER_PANEL_URL || 'http://localhost:3001'}`);
+  console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
 });
 
 module.exports = app;

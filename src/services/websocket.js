@@ -53,7 +53,7 @@ exports.addClient = (userId, ws) => {
   if (!clients.has(userId)) {
     clients.set(userId, new Set());
   }
-  clients.get(userId)!.add(ws);
+  clients.get(userId).add(ws);
 };
 
 // Remove client connection
@@ -84,6 +84,11 @@ exports.notifyGradePosted = (studentId, grade) => {
     grade: grade.letterGrade,
     percentage: grade.percentage
   });
+};
+
+// General notification to student
+exports.notifyStudent = (studentId, data) => {
+  exports.broadcastToUser(studentId, data.type, data);
 };
 
 // Notify teacher of new submission

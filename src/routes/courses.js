@@ -9,6 +9,7 @@
  * Student Endpoints:
  * GET /api/courses/student/courses - Get enrolled courses
  * POST /api/courses/:id/enroll    - Enroll in a course
+ * GET /api/courses/student/attendance - Get student's attendance
  * 
  * Teacher Endpoints:
  * GET /api/courses/teacher/courses - Get courses taught by teacher
@@ -20,13 +21,11 @@ const router = express.Router();
 const { courseController } = require('../controllers');
 const { auth, cacheMiddleware } = require('../middleware');
 
-// ============ PUBLIC ROUTES (Cached) ============
-// GET /api/courses - Get all available courses
-router.get('/', cacheMiddleware(300), courseController.getAllCourses);
-
-// ============ STUDENT ROUTES ============
+// ============ STUDENT ROUTES (must be before /:id routes) ============
 // GET /api/courses/student/courses - Get courses student is enrolled in
 router.get('/student/courses', auth(['student']), courseController.getStudentCourses);
+// GET /api/courses/student/attendance - Get student's attendance
+router.get('/student/attendance', auth(['student']), courseController.getStudentAttendance);
 // POST /api/courses/:id/enroll - Enroll student in a course
 router.post('/:id/enroll', auth(['student']), courseController.enrollCourse);
 
@@ -36,15 +35,27 @@ router.get('/teacher/courses', auth(['teacher']), courseController.getTeacherCou
 // POST /api/courses - Create new course
 router.post('/', auth(['teacher']), courseController.createCourse);
 
-// GET /api/courses/:id - Get course by ID (MUST be after specific routes)
+// ============ PUBLIC ROUTES (Cached) ============
+// GET /api/courses - Get all available courses
+router.get('/', cacheMiddleware(300), courseController.getAllCourses);
+
+// ============ TEACHER/COURSE SPECIFIC ROUTES ============
+// Teacher manages student enrollments
+router.post('/:id/enroll', auth(['teacher']), courseController.enrollStudentByTeacher);
+router.post('/:id/unenroll', auth(['teacher']), courseController.removeStudentByTeacher);
+
+// ============ ATTENDANCE ROUTES (must be before /:id) ============
+// Save attendance for a course
+router.post('/:id/attendance', auth(['teacher']), courseController.saveAttendance);
+// Get attendance records for a course
+router.get('/:id/attendance', auth(['teacher', 'student']), courseController.getAttendance);
+
+// ============ COURSE ID ROUTES (must be last) ============
+// GET /api/courses/:id - Get course by ID
 router.get('/:id', cacheMiddleware(300), courseController.getCourse);
 // PUT /api/courses/:id - Update course details
 router.put('/:id', auth(['teacher']), courseController.updateCourse);
 // DELETE /api/courses/:id - Delete course
 router.delete('/:id', auth(['teacher']), courseController.deleteCourse);
-
-// Teacher manages student enrollments
-router.post('/:id/enroll', auth(['teacher']), courseController.enrollStudentByTeacher);
-router.post('/:id/unenroll', auth(['teacher']), courseController.removeStudentByTeacher);
 
 module.exports = router;

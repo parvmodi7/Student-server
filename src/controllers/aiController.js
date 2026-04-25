@@ -276,7 +276,7 @@ exports.generatePersonalizedStudyPlan = async (req, res) => {
     if (subjectStats.length === 0) {
       return res.json({
         studyPlan: {
-          strategySummary: 'Start by taking some quizzes in the Academic Hub to get personalized recommendations!',
+          strategySummary: 'Start by taking some quizzes in the Dojo to get personalized recommendations!',
           schedule: [],
           weakAreas: [],
           focusSubjects: []

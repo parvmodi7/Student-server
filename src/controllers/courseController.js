@@ -297,3 +297,110 @@ exports.removeStudentByTeacher = async (req, res) => {
     res.status(500).json({ error: 'Failed to remove student' });
   }
 };
+
+// Save attendance for a course
+exports.saveAttendance = async (req, res) => {
+  try {
+    const { Course, Teacher } = require('../models');
+    const { date, records } = req.body;
+
+    const course = await Course.findById(req.params.id);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    await Course.findByIdAndUpdate(course._id, {
+      $set: { [`attendance.${date}`]: records }
+    });
+
+    res.json({ message: 'Attendance saved successfully' });
+  } catch (error) {
+    console.error('[SAVE ATTENDANCE ERROR]', error);
+    res.status(500).json({ error: 'Failed to save attendance' });
+  }
+};
+
+// Get attendance records for a course
+exports.getAttendance = async (req, res) => {
+  try {
+    const { Course, Teacher, Student } = require('../models');
+    const course = await Course.findById(req.params.id)
+      .populate('enrolledStudents', 'studentId firstName lastName email');
+
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    const isTeacher = req.user.role === 'teacher';
+    if (isTeacher) {
+      const teacher = await Teacher.findById(req.user.id);
+      if (!teacher || course.teacher.toString() !== teacher._id.toString()) {
+        return res.status(403).json({ error: 'Not authorized' });
+      }
+    }
+
+    res.json({ attendance: course.attendance || {} });
+  } catch (error) {
+    console.error('[GET ATTENDANCE ERROR]', error);
+    res.status(500).json({ error: 'Failed to get attendance' });
+  }
+};
+
+// Get student's attendance for all their courses
+exports.getStudentAttendance = async (req, res) => {
+  try {
+    const { Course, Student } = require('../models');
+    const student = await Student.findById(req.user.id);
+
+    if (!student) {
+      return res.status(403).json({ error: 'Student not found' });
+    }
+
+    const courses = await Course.find({ _id: { $in: student.enrolledCourses } })
+      .select('name courseCode attendance')
+      .lean();
+
+    const attendanceData = courses.map((course) => {
+      const records = course.attendance || {};
+      const studentId = student._id.toString();
+      console.log(`[getStudentAttendance] Course: ${course.courseCode}, studentId: ${studentId}, records:`, JSON.stringify(records));
+      let totalPresent = 0;
+      let totalSessions = 0;
+
+      Object.entries(records).forEach(([date, dateRecords]) => {
+        if (dateRecords && typeof dateRecords === 'object') {
+          Object.entries(dateRecords).forEach(([sid, record]) => {
+            if (sid === studentId) {
+              totalSessions++;
+              const recordObj = record;
+              if (recordObj && recordObj.present === true) {
+                totalPresent++;
+              }
+            }
+          });
+        }
+      });
+
+      const percentage = totalSessions > 0 ? Math.round((totalPresent / totalSessions) * 100) : 0;
+
+      return {
+        courseId: course._id,
+        courseName: course.name,
+        courseCode: course.courseCode,
+        totalSessions,
+        presentSessions: totalPresent,
+        percentage,
+      };
+    });
+
+    res.json({ attendance: attendanceData });
+  } catch (error) {
+    console.error('[GET STUDENT ATTENDANCE ERROR]', error);
+    res.status(500).json({ error: 'Failed to get attendance' });
+  }
+};

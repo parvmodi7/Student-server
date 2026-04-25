@@ -75,6 +75,10 @@ const courseSchema = new mongoose.Schema({
     type: String,
     enum: ['draft', 'published', 'ongoing', 'completed'],
     default: 'draft'
+  },
+  attendance: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   timestamps: true
