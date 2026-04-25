@@ -6,6 +6,7 @@
 
 const mongoose = require('mongoose');
 const { Teacher, Course, Assignment, Grade, Student } = require('../models');
+const { appendToSheet } = require('../utils/googleSheets');
 
 // Get teacher dashboard
 exports.getDashboardData = async (req, res) => {
@@ -280,13 +281,16 @@ exports.createStudent = async (req, res) => {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
 
+    const newStudentId = studentId || `STU-${Date.now()}`;
+    const newMajor = major || 'Computer Science';
+
     const student = await Student.create({
       email,
       password,
       firstName,
       lastName,
-      studentId: studentId || `STU-${Date.now()}`,
-      major: major || 'Computer Science',
+      studentId: newStudentId,
+      major: newMajor,
       graduationYear,
       enrolledCourses: enrolledCourses || []
     });
@@ -297,6 +301,17 @@ exports.createStudent = async (req, res) => {
         { $addToSet: { enrolledStudents: student._id } }
       );
     }
+
+    // Append to Google Sheet
+    await appendToSheet([
+      `${firstName} ${lastName}`,
+      email,
+      newStudentId,
+      newMajor,
+      '0', // Initial GPA
+      '1', // Initial Semester
+      new Date().toLocaleDateString("en-GB")
+    ]);
 
     res.status(201).json({ 
       message: 'Student created successfully',
