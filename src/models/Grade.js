@@ -57,6 +57,10 @@ const gradeSchema = new mongoose.Schema({
   },
   title: {
     type: String
+  },
+  assignment: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Assignment'
   }
 }, {
   timestamps: true

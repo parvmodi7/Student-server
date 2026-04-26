@@ -22,7 +22,7 @@ router.get('/dashboard', auth(['student']), cacheMiddleware(60), studentControll
 router.get('/courses', auth(['student']), cacheMiddleware(300), studentController.getCoursesWithGrades);
 
 // GET /api/student/assignments - Get assignments with submission status
-router.get('/assignments', auth(['student']), cacheMiddleware(180), studentController.getAssignmentsWithStatus);
+router.get('/assignments', auth(['student']), studentController.getAssignmentsWithStatus);
 
 // GET /api/student/results - Get grades/results (NO CACHE - slow query with populate)
 router.get('/results', auth(['student']), studentController.getResults);

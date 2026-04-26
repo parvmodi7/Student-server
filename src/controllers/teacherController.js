@@ -7,6 +7,7 @@
 const mongoose = require('mongoose');
 const { Teacher, Course, Assignment, Grade, Student } = require('../models');
 const { appendToSheet } = require('../utils/googleSheets');
+const websocketService = require('../services/websocket');
 
 // Get teacher dashboard
 exports.getDashboardData = async (req, res) => {
@@ -202,10 +203,34 @@ exports.createAssignment = async (req, res) => {
 
     const assignment = await Assignment.create({
       ...req.body,
-      teacher: teacher._id
+      teacher: teacher._id,
+      isPublished: true
     });
 
-    res.status(201).json({ assignment });
+    const students = await Student.find({ _id: { $in: course.enrolledStudents } });
+    for (const student of students) {
+      if (!student.notifications) {
+        student.notifications = [];
+      }
+      const notifId = new mongoose.Types.ObjectId();
+      const notif = {
+        _id: notifId,
+        title: 'New Assignment',
+        message: `New assignment "${assignment.title}" has been posted in ${course.name}. Due: ${new Date(assignment.dueDate).toLocaleDateString()}`,
+        type: 'info',
+        isRead: false,
+        createdAt: new Date()
+      };
+      student.notifications.unshift(notif);
+      await student.save();
+      
+      websocketService.notifyStudent(student._id.toString(), {
+        type: 'new_notification',
+        notification: notif
+      });
+    }
+
+    res.status(201).json({ assignment, studentsNotified: students.length });
   } catch (error) {
     console.error('[CREATE ASSIGNMENT ERROR]', error);
     res.status(500).json({ error: 'Failed to create assignment' });
@@ -391,6 +416,62 @@ if (!student.notifications) {
   } catch (error) {
     console.error('[PUBLISH RESULT ERROR]', error);
     res.status(500).json({ error: 'Failed to publish results' });
+  }
+};
+
+// Send notification to all students
+exports.sendNotification = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher) {
+      return res.status(403).json({ error: 'Teacher profile not found' });
+    }
+
+    const { title, message } = req.body;
+    if (!title || !message) {
+      return res.status(400).json({ error: 'Title and message are required' });
+    }
+
+    const courses = await Course.find({ teacher: teacher._id });
+    const uniqueStudentIds = new Set();
+    
+    courses.forEach(course => {
+      course.enrolledStudents?.forEach(studentId => {
+        uniqueStudentIds.add(studentId.toString());
+      });
+    });
+
+    const students = await Student.find({ _id: { $in: Array.from(uniqueStudentIds) } });
+    const totalStudents = students.length;
+
+    for (const student of students) {
+      if (!student.notifications) {
+        student.notifications = [];
+      }
+      const notif = {
+        _id: new mongoose.Types.ObjectId(),
+        title: title,
+        message: message,
+        type: 'info',
+        isRead: false,
+        createdAt: new Date()
+      };
+      student.notifications.unshift(notif);
+      await student.save();
+      
+      websocketService.notifyStudent(student._id.toString(), {
+        type: 'new_notification',
+        notification: notif
+      });
+    }
+
+    res.status(201).json({ 
+      message: 'Notification sent successfully',
+      studentsNotified: totalStudents
+    });
+  } catch (error) {
+    console.error('[SEND NOTIFICATION ERROR]', error);
+    res.status(500).json({ error: 'Failed to send notification' });
   }
 };
 

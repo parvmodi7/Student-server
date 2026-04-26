@@ -27,7 +27,7 @@ function cacheMiddleware(ttl) {
 
     if (cached) {
       console.log('[CACHE HIT] ' + key);
-      return res.status(200).json({ data: cached, cached: true });
+      return res.status(200).json(cached);
     }
 
     var originalJson = res.json.bind(res);

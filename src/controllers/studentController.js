@@ -43,8 +43,7 @@ exports.getDashboardData = async function(req, res) {
 
     const upcomingAssignments = await Assignment.find({
       course: { $in: student.enrolledCourses },
-      dueDate: { $gte: new Date() },
-      isPublished: true
+      dueDate: { $gte: new Date() }
     })
       .populate('course', 'name')
       .sort({ dueDate: 1 })
@@ -173,7 +172,7 @@ exports.getAssignmentsWithStatus = async function(req, res) {
     }
 
     var status = req.query.status;
-    var query = { course: { $in: student.enrolledCourses }, isPublished: true };
+    var query = { course: { $in: student.enrolledCourses } };
     
     if (status === 'pending') {
       query.dueDate = { $gte: new Date() };
@@ -200,7 +199,8 @@ exports.getAssignmentsWithStatus = async function(req, res) {
         type: a.type,
         status: submission ? 'submitted' : (new Date() > a.dueDate ? 'overdue' : 'pending'),
         submittedAt: submission ? submission.submittedAt : null,
-        grade: submission ? submission.grade : null
+        grade: submission ? submission.grade : null,
+        pdfUrl: a.pdfUrl
       };
     });
 

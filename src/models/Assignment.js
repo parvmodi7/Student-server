@@ -70,6 +70,10 @@ const assignmentSchema = new mongoose.Schema({
     default: 10,
     min: 0,
     max: 100
+  },
+  pdfUrl: {
+    type: String,
+    default: ''
   }
 }, {
   timestamps: true

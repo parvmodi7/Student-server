@@ -55,4 +55,7 @@ router.post('/students', auth(['teacher']), teacherController.createStudent);
 // POST /api/teacher/results - Publish results with PDF
 router.post('/results', auth(['teacher']), teacherController.publishResult);
 
+// POST /api/teacher/notification - Send notification to all students
+router.post('/notification', auth(['teacher']), teacherController.sendNotification);
+
 module.exports = router;
