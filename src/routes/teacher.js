@@ -58,4 +58,10 @@ router.post('/results', auth(['teacher']), teacherController.publishResult);
 // POST /api/teacher/notification - Send notification to all students
 router.post('/notification', auth(['teacher']), teacherController.sendNotification);
 
+// POST /api/teacher/pyq - Upload PYQ paper
+router.post('/pyq', auth(['teacher']), teacherController.createPyq);
+
+// GET /api/teacher/pyq/:courseId - Get PYQs for a course
+router.get('/pyq/:courseId', auth(['teacher']), teacherController.getPyqsByCourse);
+
 module.exports = router;

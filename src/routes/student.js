@@ -33,4 +33,10 @@ router.get('/notifications', auth(['student']), studentController.getNotificatio
 // PUT /api/student/notifications/:id/read - Mark specific notification as read
 router.put('/notifications/:id/read', auth(['student']), studentController.markNotificationRead);
 
+// GET /api/student/pyq-courses - Get courses with PYQ availability
+router.get('/pyq-courses', auth(['student']), studentController.getPyqCourses);
+
+// POST /api/student/generate-paper - Generate AI paper from PYQs
+router.post('/generate-paper', auth(['student']), studentController.generatePaper);
+
 module.exports = router;

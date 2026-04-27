@@ -494,6 +494,59 @@ exports.sendNotification = async (req, res) => {
   }
 };
 
+// Upload PYQ paper for a course
+exports.createPyq = async (req, res) => {
+  try {
+    const teacher = await Teacher.findById(req.user.id);
+    if (!teacher) {
+      return res.status(403).json({ error: 'Teacher profile not found' });
+    }
+
+    const { course: courseId, year, pdfUrl } = req.body;
+
+    if (!courseId || !year || !pdfUrl) {
+      return res.status(400).json({ error: 'Course, year, and PDF URL are required' });
+    }
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    if (course.teacher.toString() !== teacher._id.toString()) {
+      return res.status(403).json({ error: 'You do not teach this course' });
+    }
+
+    const { Pyq } = require('../models');
+
+    // Upsert: update if exists, create if not
+    const pyq = await Pyq.findOneAndUpdate(
+      { course: courseId, year },
+      { pdfUrl, uploadedBy: teacher._id },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    res.status(201).json({ message: 'PYQ uploaded successfully', pyq });
+  } catch (error) {
+    console.error('[CREATE PYQ ERROR]', error);
+    res.status(500).json({ error: 'Failed to upload PYQ' });
+  }
+};
+
+// Get PYQs for a course
+exports.getPyqsByCourse = async (req, res) => {
+  try {
+    const { Pyq } = require('../models');
+    const pyqs = await Pyq.find({ course: req.params.courseId })
+      .sort({ year: -1 });
+
+    res.json({ pyqs });
+  } catch (error) {
+    console.error('[GET PYQS ERROR]', error);
+    res.status(500).json({ error: 'Failed to get PYQs' });
+  }
+};
+
 const getLetterGrade = (percentage) => {
   if (percentage >= 90) return 'A+';
   if (percentage >= 85) return 'A';

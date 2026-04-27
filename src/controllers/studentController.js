@@ -336,3 +336,177 @@ exports.addNotification = async function(studentId, notificationData) {
     throw error;
   }
 };
+
+// Get courses with PYQ availability for the student
+exports.getPyqCourses = async function(req, res) {
+  try {
+    var student = await Student.findById(req.user.id);
+    if (!student) {
+      return res.status(403).json({ error: 'Student profile not found' });
+    }
+
+    var courses = await Course.find({ _id: { $in: student.enrolledCourses } });
+
+    var { Pyq } = require('../models');
+    var coursesWithPyq = await Promise.all(courses.map(async function(course) {
+      var pyqs = await Pyq.find({ course: course._id }).sort({ year: -1 });
+      return {
+        _id: course._id,
+        name: course.name,
+        courseCode: course.courseCode,
+        hasPyq: pyqs.length > 0,
+        pyqCount: pyqs.length,
+        pyqYears: pyqs.map(function(p) { return p.year; })
+      };
+    }));
+
+    res.json({ courses: coursesWithPyq });
+  } catch (error) {
+    console.error('[GET PYQ COURSES ERROR]', error);
+    res.status(500).json({ error: 'Failed to get PYQ courses' });
+  }
+};
+
+// Generate AI predicted paper from PYQ papers
+exports.generatePaper = async function(req, res) {
+  try {
+    var student = await Student.findById(req.user.id);
+    if (!student) {
+      return res.status(403).json({ error: 'Student profile not found' });
+    }
+
+    var { courseId } = req.body;
+    if (!courseId) {
+      return res.status(400).json({ error: 'Course ID is required' });
+    }
+
+    var course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    var { Pyq } = require('../models');
+    var pyqs = await Pyq.find({ course: courseId }).sort({ year: -1 });
+
+    if (pyqs.length === 0) {
+      return res.status(400).json({ error: 'No PYQ papers available for this course' });
+    }
+
+    // Download PDF content from each PYQ
+    var axios = require('axios');
+    var pdfParse;
+    try {
+      pdfParse = require('pdf-parse');
+    } catch (e) {
+      console.log('[GENERATE PAPER] pdf-parse not available, using URL references only');
+      pdfParse = null;
+    }
+
+    var paperTexts = [];
+    for (var pyq of pyqs) {
+      try {
+        if (pdfParse && pyq.pdfUrl) {
+          var response = await axios.get(pyq.pdfUrl, { responseType: 'arraybuffer', timeout: 15000 });
+          var pdfData = await pdfParse(Buffer.from(response.data));
+          paperTexts.push({
+            year: pyq.year,
+            content: pdfData.text.substring(0, 8000) // Limit text to avoid token overflow
+          });
+        } else {
+          paperTexts.push({
+            year: pyq.year,
+            content: `[PDF from year ${pyq.year} - URL: ${pyq.pdfUrl}]`
+          });
+        }
+      } catch (downloadErr) {
+        console.error('[GENERATE PAPER] Failed to parse PDF for year', pyq.year, downloadErr.message);
+        paperTexts.push({
+          year: pyq.year,
+          content: `[PDF from year ${pyq.year} - could not parse content]`
+        });
+      }
+    }
+
+    var yearsString = paperTexts.map(function(p) { return p.year; }).join(', ');
+    var papersContent = paperTexts.map(function(p) {
+      return `=== YEAR ${p.year} PAPER ===\n${p.content}`;
+    }).join('\n\n');
+
+    var prompt = `You are an expert exam paper predictor for the course "${course.name}" (${course.courseCode || ''}).
+
+I have ${pyqs.length} previous year question papers from years: ${yearsString}.
+
+Here are the contents of the previous year papers:
+
+${papersContent}
+
+Based on careful analysis of these ${pyqs.length} previous year papers, generate a PREDICTED exam paper that would be 50-80% accurate for the upcoming exam.
+
+Your analysis approach:
+1. Identify REPEATED questions that appear across multiple years (these are HIGH PRIORITY - likely to appear again)
+2. Identify IMPORTANT topics that are consistently tested
+3. Identify PATTERNS in question types, marks distribution, and difficulty progression
+4. Create questions that are similar in style and difficulty to the originals
+5. Include a mix of repeated/commonly asked questions (60-70%) and predicted new questions (30-40%)
+
+Generate the paper in this JSON format:
+{
+  "paperTitle": "Predicted Exam Paper - ${course.name}",
+  "courseName": "${course.name}",
+  "courseCode": "${course.courseCode || ''}",
+  "totalMarks": 100,
+  "duration": "3 hours",
+  "accuracyEstimate": <number between 50-80>,
+  "sections": [
+    {
+      "sectionName": "Section A - Short Answer Questions",
+      "sectionMarks": 30,
+      "instructions": "Answer all questions",
+      "questions": [
+        {
+          "questionNumber": 1,
+          "question": "Full question text",
+          "marks": 5,
+          "isRepeated": true,
+          "repeatedFromYears": [2024, 2023],
+          "confidence": "High/Medium/Low",
+          "topic": "topic name"
+        }
+      ]
+    },
+    {
+      "sectionName": "Section B - Long Answer Questions",
+      "sectionMarks": 50,
+      "instructions": "Answer any 5 out of 7",
+      "questions": [...]
+    },
+    {
+      "sectionName": "Section C - Numerical/Application Questions",
+      "sectionMarks": 20,
+      "instructions": "Answer all questions",
+      "questions": [...]
+    }
+  ],
+  "analysisNotes": "Brief analysis of patterns found across previous year papers",
+  "topRepeatedTopics": ["topic1", "topic2", "topic3"],
+  "studyRecommendations": ["recommendation1", "recommendation2"]
+}
+
+Make the paper realistic with proper marks distribution totaling 100 marks. Include at least 15-20 questions across all sections.`;
+
+    var systemPrompt = `You are an expert academic exam paper predictor. You analyze previous year question papers to predict upcoming exam questions with high accuracy. Focus on identifying repeated patterns, commonly tested topics, and question styles. Generate realistic, well-structured exam papers.`;
+
+    var { callGemini } = require('../services/geminiService');
+    var result = await callGemini(prompt, systemPrompt, true);
+
+    res.json({ paper: result });
+  } catch (error) {
+    console.error('[GENERATE PAPER ERROR]', error);
+    var isQuotaError = error.message?.includes('quota') || error.message?.includes('429');
+    res.status(isQuotaError ? 429 : 500).json({
+      error: isQuotaError ? 'AI is busy right now. Please try again in a moment.' : 'Failed to generate paper. Please try again.',
+      quotaExceeded: isQuotaError
+    });
+  }
+};
+

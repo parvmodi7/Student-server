@@ -10,5 +10,6 @@ module.exports = {
   Grade: require('./Grade'),
   Schedule: require('./Schedule'),
   Question: require('./Question'),
-  QuizAttempt: require('./QuizAttempt')
+  QuizAttempt: require('./QuizAttempt'),
+  Pyq: require('./Pyq')
 };
