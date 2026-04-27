@@ -358,60 +358,79 @@ exports.publishResult = async (req, res) => {
 
     const { courseId, title, pdfUrl } = req.body;
 
-    // Get all students from all courses taught by this teacher
-    const courses = await Course.find({ teacher: teacher._id });
-    let totalStudents = 0;
+    if (!courseId) {
+      return res.status(400).json({ error: 'Course ID is required' });
+    }
+
+    if (!title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    // Get the specific course
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    if (course.teacher.toString() !== teacher._id.toString()) {
+      return res.status(403).json({ error: 'You do not teach this course' });
+    }
+
+    const students = await Student.find({ _id: { $in: course.enrolledStudents } });
+    const totalStudents = students.length;
     
     const results = [];
-    for (const course of courses) {
-      const students = await Student.find({ _id: { $in: course.enrolledStudents } });
-      totalStudents += students.length;
+    const uniqueStudentIds = new Set();
 
-      for (const student of students) {
-        // Try to update existing grade, or create new one
-        let grade = await Grade.findOne({ student: student._id, course: course._id });
-        
-        if (grade) {
-          grade.pdfUrl = pdfUrl;
-          grade.title = title || 'Result Published';
-          grade.gradedAt = new Date();
-          await grade.save();
-        } else {
-          grade = await Grade.create({
-            student: student._id,
-            course: course._id,
-            grade: 0,
-            totalPoints: 100,
-            percentage: 0,
-            letterGrade: 'N/A',
-            feedback: '',
-            gradedBy: teacher._id,
-            gradedAt: new Date(),
-            pdfUrl: pdfUrl,
-            title: title || 'Result Published'
-          });
-        }
-        results.push(grade);
-
-if (!student.notifications) {
-          student.notifications = [];
-        }
-        student.notifications.unshift({
-          _id: new mongoose.Types.ObjectId(),
-          title: 'New Result Published',
-          message: title ? `"${title}" has been published. Check your Dojo.` : 'New result has been published. Check your Dojo.',
-          type: 'info',
-          isRead: false,
-          createdAt: new Date()
-        });
-        await student.save();
+    for (const student of students) {
+      if (uniqueStudentIds.has(student._id.toString())) {
+        continue;
       }
+      uniqueStudentIds.add(student._id.toString());
+
+      let grade = await Grade.findOne({ student: student._id, course: course._id });
+      
+      if (grade) {
+        grade.pdfUrl = pdfUrl;
+        grade.title = title;
+        grade.gradedAt = new Date();
+        await grade.save();
+        results.push(grade);
+      } else {
+        grade = await Grade.create({
+          student: student._id,
+          course: course._id,
+          grade: 0,
+          totalPoints: 100,
+          percentage: 0,
+          letterGrade: 'N/A',
+          feedback: '',
+          gradedBy: teacher._id,
+          gradedAt: new Date(),
+          pdfUrl: pdfUrl,
+          title: title
+        });
+        results.push(grade);
+      }
+
+      if (!student.notifications) {
+        student.notifications = [];
+      }
+      student.notifications.unshift({
+        _id: new mongoose.Types.ObjectId(),
+        title: 'New Result Published',
+        message: `"${title}" has been published for ${course.name}. Check your Dojo.`,
+        type: 'info',
+        isRead: false,
+        createdAt: new Date()
+      });
+      await student.save();
     }
 
     res.status(201).json({ 
       message: 'Results published successfully',
       results,
-      studentsNotified: totalStudents
+      studentsNotified: uniqueStudentIds.size
     });
   } catch (error) {
     console.error('[PUBLISH RESULT ERROR]', error);
