@@ -97,16 +97,20 @@ const retryRequest = async (fn, maxRetries = 3) => {
  * @param {string} prompt - User prompt
  * @param {string} systemPrompt - System instructions
  * @param {boolean} useJson - Return JSON response
+ * @param {string|null} modelName - Override model name
+ * @param {boolean} skipCache - Skip cache for unique responses (e.g. paper generation)
  * @returns {Promise<object|string>} - API response
  */
-const callGemini = async (prompt, systemPrompt, useJson = false, modelName = null) => {
+const callGemini = async (prompt, systemPrompt, useJson = false, modelName = null, skipCache = false) => {
   const cacheKey = generateCacheKey(prompt, systemPrompt);
   
-  // Check cache first
-  const cached = responseCache.get(cacheKey);
-  if (cached) {
-    console.log(`[GEMINI CACHE HIT] ${cacheKey}`);
-    return cached;
+  // Check cache first (skip if explicitly requested)
+  if (!skipCache) {
+    const cached = responseCache.get(cacheKey);
+    if (cached) {
+      console.log(`[GEMINI CACHE HIT] ${cacheKey}`);
+      return cached;
+    }
   }
 
   // Wait if rate limited
@@ -156,7 +160,9 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
       result = text;
     }
     
-    responseCache.set(cacheKey, result);
+    if (!skipCache) {
+      responseCache.set(cacheKey, result);
+    }
     return result;
   } catch (error) {
     console.error('[GEMINI ERROR]', error.response?.data?.error?.message || error.message);
