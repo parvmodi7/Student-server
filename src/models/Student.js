@@ -46,6 +46,11 @@ const studentSchema = new mongoose.Schema({
     min: 0,
     max: 4.0
   },
+  pastGpa: [{
+    gpa: { type: Number, min: 0, max: 4.0 },
+    semester: String,
+    date: { type: Date, default: Date.now }
+  }],
   totalCredits: {
     type: Number,
     default: 0

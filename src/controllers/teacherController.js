@@ -260,6 +260,64 @@ exports.updateCourse = async (req, res) => {
   }
 };
 
+// Update student
+exports.updateStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { firstName, lastName, email, major, gpa, semester, pastGpa } = req.body;
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    if (firstName) student.firstName = firstName;
+    if (lastName) student.lastName = lastName;
+    if (email) student.email = email;
+    if (major !== undefined) student.major = major;
+    if (gpa !== undefined && gpa !== student.gpa) {
+      if (student.gpa > 0) {
+        student.pastGpa.push({ gpa: student.gpa, semester: `Semester ${student.semester || 'N/A'}` });
+      }
+      student.gpa = gpa;
+    }
+    if (semester !== undefined) student.semester = semester;
+    if (pastGpa) student.pastGpa = pastGpa;
+
+    await student.save();
+
+    res.json({ message: 'Student updated successfully', student: student.toJSON() });
+  } catch (error) {
+    console.error('[UPDATE STUDENT ERROR]', error);
+    res.status(500).json({ error: 'Failed to update student' });
+  }
+};
+
+// Delete student
+exports.deleteStudent = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    await Course.updateMany(
+      { enrolledStudents: studentId },
+      { $pull: { enrolledStudents: studentId } }
+    );
+
+    await Grade.deleteMany({ student: studentId });
+    await student.deleteOne();
+
+    res.json({ message: 'Student deleted successfully' });
+  } catch (error) {
+    console.error('[DELETE STUDENT ERROR]', error);
+    res.status(500).json({ error: 'Failed to delete student' });
+  }
+};
+
 // Get all student users (for teacher)
 exports.getAllStudentUsers = async (req, res) => {
   try {

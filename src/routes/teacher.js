@@ -52,6 +52,12 @@ router.post('/assignments', auth(['teacher']), teacherController.createAssignmen
 // POST /api/teacher/students - Create a new student account
 router.post('/students', auth(['teacher']), teacherController.createStudent);
 
+// PUT /api/teacher/students/:studentId - Update student
+router.put('/students/:studentId', auth(['teacher']), teacherController.updateStudent);
+
+// DELETE /api/teacher/students/:studentId - Delete student
+router.delete('/students/:studentId', auth(['teacher']), teacherController.deleteStudent);
+
 // POST /api/teacher/results - Publish results with PDF
 router.post('/results', auth(['teacher']), teacherController.publishResult);
 
