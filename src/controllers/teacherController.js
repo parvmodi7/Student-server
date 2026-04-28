@@ -120,6 +120,9 @@ exports.getAllStudents = async (req, res) => {
       studentId: s.studentId,
       major: s.major,
       gpa: s.gpa,
+      semester: s.semester || 1,
+      pastGpa: s.pastGpa || [],
+      useLatestGpa: s.useLatestGpa || false,
       totalCredits: s.totalCredits,
       graduationYear: s.graduationYear
     }))});
@@ -264,7 +267,7 @@ exports.updateCourse = async (req, res) => {
 exports.updateStudent = async (req, res) => {
   try {
     const { studentId } = req.params;
-    const { firstName, lastName, email, major, gpa, semester, pastGpa } = req.body;
+    const { firstName, lastName, email, major, gpa, semester, pastGpa, newSemesterGpas, useLatestGpa } = req.body;
 
     const student = await Student.findById(studentId);
     if (!student) {
@@ -275,14 +278,54 @@ exports.updateStudent = async (req, res) => {
     if (lastName) student.lastName = lastName;
     if (email) student.email = email;
     if (major !== undefined) student.major = major;
-    if (gpa !== undefined && gpa !== student.gpa) {
+    if (useLatestGpa !== undefined) student.useLatestGpa = useLatestGpa;
+
+    // Handle semester increment with per-semester GPA entries
+    if (newSemesterGpas && Object.keys(newSemesterGpas).length > 0) {
+      const oldSemester = student.semester || 1;
+      const existingLabels = (student.pastGpa || []).map(p => p.semester);
+      if (student.gpa > 0 && !existingLabels.includes(`Semester ${oldSemester}`)) {
+        student.pastGpa.push({ gpa: student.gpa, semester: `Semester ${oldSemester}`, date: new Date() });
+      }
+      Object.entries(newSemesterGpas).forEach(([semLabel, semGpa]) => {
+        if (!existingLabels.includes(semLabel)) {
+          student.pastGpa.push({ gpa: Number(semGpa), semester: semLabel, date: new Date() });
+        }
+      });
+      // Calculate GPA based on useLatestGpa flag
+      const allGpas = student.pastGpa.map(p => p.gpa).filter(g => g > 0);
+      if (student.useLatestGpa) {
+        // Use the latest semester GPA
+        const sorted = [...student.pastGpa].sort((a, b) => {
+          const aNum = parseInt(String(a.semester || '').replace(/\D/g, '') || '0');
+          const bNum = parseInt(String(b.semester || '').replace(/\D/g, '') || '0');
+          return bNum - aNum;
+        });
+        student.gpa = sorted.length > 0 ? sorted[0].gpa : 0;
+      } else {
+        student.gpa = allGpas.length > 0 ? parseFloat((allGpas.reduce((a, b) => a + b, 0) / allGpas.length).toFixed(2)) : 0;
+      }
+    } else if (pastGpa) {
+      student.pastGpa = pastGpa;
+      const allGpas = pastGpa.map(p => p.gpa).filter(g => g > 0);
+      if (student.useLatestGpa) {
+        const sorted = [...pastGpa].sort((a, b) => {
+          const aNum = parseInt(String(a.semester || '').replace(/\D/g, '') || '0');
+          const bNum = parseInt(String(b.semester || '').replace(/\D/g, '') || '0');
+          return bNum - aNum;
+        });
+        student.gpa = sorted.length > 0 ? sorted[0].gpa : 0;
+      } else if (allGpas.length > 0) {
+        student.gpa = parseFloat((allGpas.reduce((a, b) => a + b, 0) / allGpas.length).toFixed(2));
+      }
+    } else if (gpa !== undefined && gpa !== student.gpa) {
       if (student.gpa > 0) {
         student.pastGpa.push({ gpa: student.gpa, semester: `Semester ${student.semester || 'N/A'}` });
       }
       student.gpa = gpa;
     }
+
     if (semester !== undefined) student.semester = semester;
-    if (pastGpa) student.pastGpa = pastGpa;
 
     await student.save();
 

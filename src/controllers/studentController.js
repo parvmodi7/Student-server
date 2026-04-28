@@ -77,10 +77,14 @@ exports.getDashboardData = async function(req, res) {
         name: ((student.firstName || '') + ' ' + (student.lastName || '')).trim() || 'Student',
         email: student.email,
         major: student.major,
-        semester: student.enrolledCourses ? student.enrolledCourses.length : 0,
+        semester: student.semester || 1,
         graduationYear: student.graduationYear
       },
       gpa: parseFloat(gpa),
+      pastGpa: (student.pastGpa || []).map(function(p) {
+        return { gpa: p.gpa, semester: p.semester, date: p.date };
+      }),
+      useLatestGpa: student.useLatestGpa || false,
       totalCredits: totalCredits,
       attendance: attendance,
       courses: courses.map(function(c) {

@@ -40,6 +40,10 @@ const studentSchema = new mongoose.Schema({
   graduationYear: {
     type: Number
   },
+  semester: {
+    type: Number,
+    default: 1
+  },
   gpa: {
     type: Number,
     default: 0,
@@ -51,6 +55,10 @@ const studentSchema = new mongoose.Schema({
     semester: String,
     date: { type: Date, default: Date.now }
   }],
+  useLatestGpa: {
+    type: Boolean,
+    default: false
+  },
   totalCredits: {
     type: Number,
     default: 0
