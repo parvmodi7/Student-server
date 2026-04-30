@@ -46,7 +46,7 @@ exports.getCourse = async (req, res) => {
     const { Course } = require('../models');
     const course = await Course.findById(req.params.id)
       .populate('teacher', 'userId firstName lastName department')
-      .populate('enrolledStudents', 'studentId userId firstName lastName email major');
+      .populate('enrolledStudents', 'studentId userId firstName lastName email major gpa pastGpa useLatestGpa');
 
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
@@ -184,7 +184,7 @@ exports.getTeacherCourses = async (req, res) => {
     }
 
     const courses = await Course.find({ teacher: teacher._id })
-      .populate('enrolledStudents', 'studentId userId firstName lastName email')
+      .populate('enrolledStudents', 'studentId userId firstName lastName email major gpa pastGpa useLatestGpa')
       .sort({ createdAt: -1 });
 
     res.json({ courses });
