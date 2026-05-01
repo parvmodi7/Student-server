@@ -13,9 +13,9 @@ async function run() {
       studentId: 'STU-12345',
     });
     await student.validate();
-    console.log("Validation passed");
+    ("Validation passed");
   } catch (err) {
-    console.log("Validation error:", err.message);
+    ("Validation error:", err.message);
   }
   process.exit(0);
 }

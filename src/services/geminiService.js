@@ -30,7 +30,7 @@ const waitIfNeeded = async () => {
   // Wait if rate limited
   while (!canMakeRequest()) {
     const waitTime = 60000 - (Date.now() - lastReset);
-    console.log(`[GEMINI] Rate limited, waiting ${Math.ceil(waitTime/1000)}s...`);
+    (`[GEMINI] Rate limited, waiting ${Math.ceil(waitTime/1000)}s...`);
     await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, 5000)));
   }
 };
@@ -83,7 +83,7 @@ const retryRequest = async (fn, maxRetries = 3) => {
       // If 503 (high demand) or rate limit, retry
       if ((error.response?.status === 503 || error.code === 'ERR_BAD_RESPONSE') && i < maxRetries - 1) {
         const waitTime = Math.pow(2, i) * 1000;
-        console.log(`[GEMINI] Retry ${i + 1}/${maxRetries} after ${waitTime}ms...`);
+        (`[GEMINI] Retry ${i + 1}/${maxRetries} after ${waitTime}ms...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
         continue;
       }
@@ -108,7 +108,7 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
   if (!skipCache) {
     const cached = responseCache.get(cacheKey);
     if (cached) {
-      console.log(`[GEMINI CACHE HIT] ${cacheKey}`);
+      (`[GEMINI CACHE HIT] ${cacheKey}`);
       return cached;
     }
   }
@@ -123,7 +123,7 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
     throw new Error('GEMINI_API_KEY not configured');
   }
 
-  console.log('[GEMINI] Calling API with useJson:', useJson, 'model:', activeModel);
+  ('[GEMINI] Calling API with useJson:', useJson, 'model:', activeModel);
   
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${activeModel}:generateContent?key=${apiKey}`;
 
@@ -144,8 +144,8 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
     });
 
     requestCount++;
-    console.log(`[GEMINI REQUEST] Count: ${requestCount}, response status:`, response.status);
-    console.log('[GEMINI] Response data:', JSON.stringify(response.data).slice(0, 500));
+    (`[GEMINI REQUEST] Count: ${requestCount}, response status:`, response.status);
+    ('[GEMINI] Response data:', JSON.stringify(response.data).slice(0, 500));
 
     const text = response.data.candidates?.[0]?.content?.parts?.[0]?.text;
     
@@ -168,7 +168,7 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
     console.error('[GEMINI ERROR]', error.response?.data?.error?.message || error.message);
     
     if (error.response?.status === 503 || error.code === 'ERR_BAD_RESPONSE') {
-      console.log('[GEMINI] API unavailable, returning mock data');
+      ('[GEMINI] API unavailable, returning mock data');
       return getMockStudyPlan();
     }
     
@@ -181,7 +181,7 @@ const callGemini = async (prompt, systemPrompt, useJson = false, modelName = nul
  */
 const clearGeminiCache = () => {
   responseCache.flushAll();
-  console.log('[GEMINI CACHE] Cleared');
+  ('[GEMINI CACHE] Cleared');
 };
 
 module.exports = { callGemini, clearGeminiCache };

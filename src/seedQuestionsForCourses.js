@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   await mongoose.connect(process.env.MONGO_URI);
-  console.log('MongoDB Connected');
+  ('MongoDB Connected');
 };
 
 const questionTemplates = {
@@ -81,23 +81,23 @@ const seedQuestions = async () => {
     const courses = await mongoose.connection.collection('courses').find({ isActive: true }).toArray();
     
     if (courses.length === 0) {
-      console.log('❌ No courses found in database. Please create courses first.');
+      ('❌ No courses found in database. Please create courses first.');
       process.exit(1);
     }
     
-    console.log(`Found ${courses.length} courses in database:`);
-    courses.forEach(c => console.log(`  - ${c.name} (${c.courseCode})`));
+    (`Found ${courses.length} courses in database:`);
+    courses.forEach(c => (`  - ${c.name} (${c.courseCode})`));
     
     // Get a teacher for the questions
     const teacher = await mongoose.connection.collection('teachers').findOne();
     if (!teacher) {
-      console.log('❌ No teacher found in database.');
+      ('❌ No teacher found in database.');
       process.exit(1);
     }
     
     // Drop all existing questions
     await mongoose.connection.collection('questions').deleteMany({});
-    console.log('🗑️  Dropped all existing questions');
+    ('🗑️  Dropped all existing questions');
     
     // Create questions for each course
     let totalQuestions = 0;
@@ -107,7 +107,7 @@ const seedQuestions = async () => {
       const templates = questionTemplates[courseName];
       
       if (!templates) {
-        console.log(`⚠️  No question templates found for course: ${courseName}`);
+        (`⚠️  No question templates found for course: ${courseName}`);
         
         // Create generic questions for unknown courses
         const genericQuestions = [
@@ -131,7 +131,7 @@ const seedQuestions = async () => {
         
         await mongoose.connection.collection('questions').insertMany(docs);
         totalQuestions += docs.length;
-        console.log(`✅ Added ${docs.length} generic questions for ${courseName}`);
+        (`✅ Added ${docs.length} generic questions for ${courseName}`);
       } else {
         const docs = templates.map(q => ({
           ...q,
@@ -148,21 +148,21 @@ const seedQuestions = async () => {
         
         await mongoose.connection.collection('questions').insertMany(docs);
         totalQuestions += docs.length;
-        console.log(`✅ Added ${docs.length} questions for ${courseName}`);
+        (`✅ Added ${docs.length} questions for ${courseName}`);
       }
     }
     
-    console.log(`\n🎉 Total questions seeded: ${totalQuestions}`);
+    (`\n🎉 Total questions seeded: ${totalQuestions}`);
     
     // Verify
     const count = await mongoose.connection.collection('questions').countDocuments();
-    console.log(`📊 Total questions in database: ${count}`);
+    (`📊 Total questions in database: ${count}`);
     
     // Show breakdown by course
-    console.log('\n📋 Questions by course:');
+    ('\n📋 Questions by course:');
     for (const course of courses) {
       const c = await mongoose.connection.collection('questions').countDocuments({ course: course._id });
-      console.log(`  - ${course.name}: ${c} questions`);
+      (`  - ${course.name}: ${c} questions`);
     }
     
     process.exit(0);

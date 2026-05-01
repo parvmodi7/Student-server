@@ -269,7 +269,7 @@ exports.getNotifications = async function(req, res) {
     }) : [];
     if (student.notifications.length < originalCount) {
       await student.save();
-      console.log('[NOTIFICATIONS] Auto-deleted ' + (originalCount - student.notifications.length) + ' old notifications');
+      ('[NOTIFICATIONS] Auto-deleted ' + (originalCount - student.notifications.length) + ' old notifications');
     }
 
     res.json({ notifications: student.notifications });
@@ -333,7 +333,7 @@ exports.addNotification = async function(studentId, notificationData) {
       notification: notification
     });
 
-    console.log('[ADD NOTIFICATION] Notification added for student:', studentId);
+    ('[ADD NOTIFICATION] Notification added for student:', studentId);
     return notification;
   } catch (error) {
     console.error('[ADD NOTIFICATION ERROR]', error);
@@ -425,7 +425,7 @@ exports.generatePaper = async function(req, res) {
     try {
       pdfParse = require('pdf-parse');
     } catch (e) {
-      console.log('[GENERATE PAPER] pdf-parse not available, using URL references only');
+      ('[GENERATE PAPER] pdf-parse not available, using URL references only');
       pdfParse = null;
     }
 

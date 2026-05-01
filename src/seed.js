@@ -13,7 +13,7 @@ const bcrypt = require('bcryptjs');
 
 const connectDB = async () => {
   await mongoose.connect(process.env.MONGO_URI);
-  console.log('MongoDB Connected');
+  ('MongoDB Connected');
 };
 
 const seed = async () => {
@@ -40,9 +40,9 @@ const seed = async () => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      console.log('✅ Student created: student@test.com / password123');
+      ('✅ Student created: student@test.com / password123');
     } else {
-      console.log('ℹ️ Student already exists');
+      ('ℹ️ Student already exists');
     }
 
     // Create Teacher record (includes all teacher data)
@@ -64,18 +64,18 @@ const seed = async () => {
         createdAt: new Date(),
         updatedAt: new Date()
       });
-      console.log('✅ Teacher created: teacher@test.com / password123');
+      ('✅ Teacher created: teacher@test.com / password123');
     } else {
-      console.log('ℹ️ Teacher already exists');
+      ('ℹ️ Teacher already exists');
     }
 
-    console.log('\n✅ Seed completed!');
-    console.log('\n📋 Database has ONLY 2 collections:');
-    console.log('   - students: stores email, password, name, studentId, major, gpa, enrolledCourses');
-    console.log('   - teachers: stores email, password, name, employeeId, department, coursesTaught');
-    console.log('\n📋 Login Credentials:');
-    console.log('   Student: student@test.com / password123');
-    console.log('   Teacher: teacher@test.com / password123');
+    ('\n✅ Seed completed!');
+    ('\n📋 Database has ONLY 2 collections:');
+    ('   - students: stores email, password, name, studentId, major, gpa, enrolledCourses');
+    ('   - teachers: stores email, password, name, employeeId, department, coursesTaught');
+    ('\n📋 Login Credentials:');
+    ('   Student: student@test.com / password123');
+    ('   Teacher: teacher@test.com / password123');
 
     process.exit(0);
   } catch (error) {

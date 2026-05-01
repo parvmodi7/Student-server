@@ -12,7 +12,7 @@ const appendToSheet = async (values) => {
     return;
   }
 
-  console.log('Google Sheets API credentials are ', {
+  ('Google Sheets API credentials are ', {
     GOOGLE_SERVICE_ACCOUNT_EMAIL,
     GOOGLE_PRIVATE_KEY,
     GOOGLE_SHEET_ID
@@ -22,7 +22,7 @@ const appendToSheet = async (values) => {
     // Handle potential newlines in the private key from .env file
     const formattedPrivateKey = GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n');
 
-    console.log('formattedPrivateKey', formattedPrivateKey)
+    ('formattedPrivateKey', formattedPrivateKey)
 
     const auth = new google.auth.GoogleAuth({
       credentials: {
@@ -44,7 +44,7 @@ const appendToSheet = async (values) => {
       },
     });
 
-    console.log('Successfully appended row to Google Sheet.');
+    ('Successfully appended row to Google Sheet.');
   } catch (error) {
     console.error('Error appending to Google Sheet:', error.message);
     // We don't want to throw the error to avoid breaking the main student creation flow
@@ -82,7 +82,7 @@ const appendMultipleToSheet = async (rows) => {
       },
     });
 
-    console.log('Successfully appended multiple rows to Google Sheet.');
+    ('Successfully appended multiple rows to Google Sheet.');
   } catch (error) {
     console.error('Error appending to Google Sheet:', error.message);
   }

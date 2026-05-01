@@ -26,7 +26,7 @@ function cacheMiddleware(ttl) {
     var cached = cache.get(key);
 
     if (cached) {
-      console.log('[CACHE HIT] ' + key);
+      ('[CACHE HIT] ' + key);
       return res.status(200).json(cached);
     }
 
@@ -35,7 +35,7 @@ function cacheMiddleware(ttl) {
       if (res.statusCode === 200) {
         var cacheData = toPlainObject(data);
         cache.set(key, cacheData, ttl);
-        console.log('[CACHE SET] ' + key + ' for ' + ttl + 's');
+        ('[CACHE SET] ' + key + ' for ' + ttl + 's');
       }
       return originalJson(data);
     };
@@ -47,7 +47,7 @@ function cacheMiddleware(ttl) {
 function clearCache(pattern) {
   if (!pattern) {
     cache.flushAll();
-    console.log('[CACHE] Cleared all');
+    ('[CACHE] Cleared all');
     return;
   }
   
@@ -56,7 +56,7 @@ function clearCache(pattern) {
   keys.forEach(function(key) {
     if (regex.test(key)) cache.del(key);
   });
-  console.log('[CACHE] Cleared matching: ' + pattern);
+  ('[CACHE] Cleared matching: ' + pattern);
 }
 
 module.exports = { cacheMiddleware: cacheMiddleware, cache: cache, clearCache: clearCache };

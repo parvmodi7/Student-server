@@ -368,7 +368,7 @@ exports.getStudentAttendance = async (req, res) => {
     const attendanceData = courses.map((course) => {
       const records = course.attendance || {};
       const studentId = student._id.toString();
-      console.log(`[getStudentAttendance] Course: ${course.courseCode}, studentId: ${studentId}, records:`, JSON.stringify(records));
+      (`[getStudentAttendance] Course: ${course.courseCode}, studentId: ${studentId}, records:`, JSON.stringify(records));
       let totalPresent = 0;
       let totalSessions = 0;
 

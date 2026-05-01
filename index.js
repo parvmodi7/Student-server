@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/mydb';
 
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => ('Connected to MongoDB'))
   .catch(err => console.error('MongoDB connection error:', err));
 
 app.get('/', (req, res) => {
@@ -17,7 +17,7 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  (`Server running on port ${PORT}`);
 });
 
 module.exports = app;

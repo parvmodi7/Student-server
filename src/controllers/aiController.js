@@ -119,7 +119,7 @@ Return as JSON with:
 exports.studyAssistant = async (req, res) => {
   try {
     const { question, context } = req.body;
-    console.log('[STUDY] studyAssistant called with:', { question: question?.slice(0, 50), context, user: req.user?.id });
+    ('[STUDY] studyAssistant called with:', { question: question?.slice(0, 50), context, user: req.user?.id });
 
     if (!question) {
       return res.status(400).json({ error: 'Question is required' });
@@ -135,7 +135,7 @@ exports.studyAssistant = async (req, res) => {
     const isTriage = context?.toLowerCase().includes('triage') || context?.toLowerCase().includes('80/20');
     const isInterview = context?.toLowerCase().includes('interview');
 
-    console.log(`[STUDY] context="${context}" isFlashcards=${isFlashcards} isQuestions=${isQuestions}`);
+    (`[STUDY] context="${context}" isFlashcards=${isFlashcards} isQuestions=${isQuestions}`);
 
     let systemPrompt;
     let jsonFormat = !isPlaintext;

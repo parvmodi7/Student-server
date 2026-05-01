@@ -7,10 +7,10 @@ const syncStudentsToSheet = async () => {
   try {
     const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/student-management';
     await mongoose.connect(mongoUri);
-    console.log('Connected to MongoDB');
+    ('Connected to MongoDB');
 
     const students = await Student.find({});
-    console.log(`Found ${students.length} students to sync`);
+    (`Found ${students.length} students to sync`);
 
     if (students.length > 0) {
       const rows = students.map(student => [
@@ -25,14 +25,14 @@ const syncStudentsToSheet = async () => {
       ]);
 
       await appendMultipleToSheet(rows);
-      console.log('Sync complete');
+      ('Sync complete');
     }
 
   } catch (error) {
     console.error('Sync failed:', error);
   } finally {
     await mongoose.disconnect();
-    console.log('Disconnected from MongoDB');
+    ('Disconnected from MongoDB');
     process.exit(0);
   }
 };

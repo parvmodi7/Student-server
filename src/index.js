@@ -46,7 +46,7 @@ const server = require('http').createServer(app);
 const wss = new WebSocketServer({ server, path: '/ws' });
 
 wss.on('connection', (ws, req) => {
-  console.log('[WS] New client connected');
+  ('[WS] New client connected');
   
   ws.isAlive = true;
   
@@ -70,7 +70,7 @@ wss.on('connection', (ws, req) => {
           ws.role = decoded.role;
           websocketService.addClient(decoded.id, ws);
           ws.send(JSON.stringify({ type: 'auth_success', userId: decoded.id }));
-          console.log('[WS] Client authenticated:', decoded.id, decoded.role);
+          ('[WS] Client authenticated:', decoded.id, decoded.role);
         } catch (err) {
           ws.send(JSON.stringify({ type: 'auth_error', error: 'Invalid token' }));
         }
@@ -88,7 +88,7 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     if (ws.userId) {
       websocketService.removeClient(ws.userId, ws);
-      console.log('[WS] Client disconnected:', ws.userId);
+      ('[WS] Client disconnected:', ws.userId);
     }
   });
 
@@ -115,7 +115,7 @@ wss.on('close', () => {
   clearInterval(interval);
 });
 
-console.log('[WS] WebSocket server initialized on /ws');
+('[WS] WebSocket server initialized on /ws');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -204,10 +204,10 @@ app.use((err, req, res, next) => {
 
 // Start server
 server.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📚 Student Front: ${process.env.STUDENT_FRONT_URL || 'http://localhost:3000'}`);
-  console.log(`📝 Teacher Panel: ${process.env.TEACHER_PANEL_URL || 'http://localhost:3001'}`);
-  console.log(`🔌 WebSocket: ws://localhost:${PORT}/ws`);
+  (`🚀 Server running on port ${PORT}`);
+  (`📚 Student Front: ${process.env.STUDENT_FRONT_URL || 'http://localhost:3000'}`);
+  (`📝 Teacher Panel: ${process.env.TEACHER_PANEL_URL || 'http://localhost:3001'}`);
+  (`🔌 WebSocket: ws://localhost:${PORT}/ws`);
 });
 
 module.exports = app;

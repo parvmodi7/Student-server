@@ -7,7 +7,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   await mongoose.connect(process.env.MONGO_URI);
-  console.log('MongoDB Connected');
+  ('MongoDB Connected');
 };
 
 const questions = [
@@ -48,7 +48,7 @@ const seedQuestions = async () => {
     // Find teacher
     const teacher = await mongoose.connection.collection('teachers').findOne({ email: 'teacher@test.com' });
     if (!teacher) {
-      console.log('❌ Teacher not found. Run seed.js first.');
+      ('❌ Teacher not found. Run seed.js first.');
       process.exit(1);
     }
 
@@ -71,7 +71,7 @@ const seedQuestions = async () => {
         updatedAt: new Date()
       });
       course = { _id: result.insertedId };
-      console.log('✅ Created course CS101');
+      ('✅ Created course CS101');
     }
 
     // Enroll student in the course
@@ -85,12 +85,12 @@ const seedQuestions = async () => {
         { _id: student._id },
         { $addToSet: { enrolledCourses: course._id } }
       );
-      console.log('✅ Student enrolled in CS101');
+      ('✅ Student enrolled in CS101');
     }
 
     // Clear existing questions
     await mongoose.connection.collection('questions').deleteMany({});
-    console.log('🗑️  Cleared existing questions');
+    ('🗑️  Cleared existing questions');
 
     // Insert questions
     const docs = questions.map(q => ({
@@ -106,10 +106,10 @@ const seedQuestions = async () => {
     }));
 
     await mongoose.connection.collection('questions').insertMany(docs);
-    console.log(`✅ Seeded ${docs.length} MCQ questions`);
-    console.log(`   - Data Structures: ${docs.filter(d => d.subject === 'Data Structures').length}`);
-    console.log(`   - Mathematics: ${docs.filter(d => d.subject === 'Mathematics').length}`);
-    // console.log(`   - Physics: ${docs.filter(d => d.subject === 'Physics').length}`);
+    (`✅ Seeded ${docs.length} MCQ questions`);
+    (`   - Data Structures: ${docs.filter(d => d.subject === 'Data Structures').length}`);
+    (`   - Mathematics: ${docs.filter(d => d.subject === 'Mathematics').length}`);
+    // (`   - Physics: ${docs.filter(d => d.subject === 'Physics').length}`);
 
     process.exit(0);
   } catch (error) {
