@@ -63,11 +63,25 @@ exports.getDashboardData = async function(req, res) {
     var totalClasses = 0;
     if (student.attendance) {
       student.attendance.forEach(function(a) {
-        totalPresent += a.present || 0;
-        totalClasses += a.total || 0;
+        totalPresent += (a.present || a.presentSessions || 0);
+        totalClasses += (a.total || a.totalSessions || 0);
       });
     }
     var attendance = totalClasses > 0 ? Math.round((totalPresent / totalClasses) * 100) : 0;
+    
+    // Also calculate effective GPA (average across all semesters) 
+    // because if current semester has no grades yet, gpa is 0
+    var allGpas = [];
+    if (student.pastGpa && student.pastGpa.length > 0) {
+      student.pastGpa.forEach(function(p) {
+        if (p.gpa > 0) allGpas.push(p.gpa);
+      });
+    }
+    var currentGpaVal = parseFloat(gpa);
+    if (currentGpaVal > 0) allGpas.push(currentGpaVal);
+    var averageGpa = allGpas.length > 0 
+      ? (allGpas.reduce((a, b) => a + b, 0) / allGpas.length).toFixed(2) 
+      : gpa;
 
     res.json({
       student: {
@@ -81,6 +95,7 @@ exports.getDashboardData = async function(req, res) {
         graduationYear: student.graduationYear
       },
       gpa: parseFloat(gpa),
+      averageGpa: parseFloat(averageGpa),
       pastGpa: (student.pastGpa || []).map(function(p) {
         return { gpa: p.gpa, semester: p.semester, date: p.date };
       }),
