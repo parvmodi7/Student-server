@@ -13,5 +13,6 @@ module.exports = {
   teacherController: require('./teacherController'),
   reportController: require('./reportController'),
   gamificationController: require('./gamificationController'),
-  questionController: require('./questionController')
+  questionController: require('./questionController'),
+  emailController: require('./emailController')
 };

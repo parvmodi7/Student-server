@@ -17,6 +17,7 @@ const teacherRoutes = require('./teacher');
 const reportRoutes = require('./reports');
 const gamificationRoutes = require('./gamification');
 const questionRoutes = require('./questions');
+const emailRoutes = require('./email');
 
 router.use('/auth', authRoutes);
 router.use('/user', userRoutes);
@@ -30,6 +31,7 @@ router.use('/ai', aiRoutes);
 router.use('/reports', reportRoutes);
 router.use('/gamification', gamificationRoutes);
 router.use('/questions', questionRoutes);
+router.use('/email', emailRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {
