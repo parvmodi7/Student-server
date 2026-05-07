@@ -12,5 +12,6 @@ module.exports = {
   Question: require('./Question'),
   QuizAttempt: require('./QuizAttempt'),
   Pyq: require('./Pyq'),
-  PaperGeneration: require('./PaperGeneration')
+  PaperGeneration: require('./PaperGeneration'),
+  Feedback: require('./Feedback')
 };

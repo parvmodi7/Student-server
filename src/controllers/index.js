@@ -14,5 +14,6 @@ module.exports = {
   reportController: require('./reportController'),
   gamificationController: require('./gamificationController'),
   questionController: require('./questionController'),
-  emailController: require('./emailController')
+  emailController: require('./emailController'),
+  feedbackController: require('./feedbackController')
 };
