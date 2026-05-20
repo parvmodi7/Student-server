@@ -7,7 +7,7 @@ const rateLimit = require('express-rate-limit');
 // General API rate limiter — 50 requests per minute per IP
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 50, // 50 requests per minute
+  max: 100, // 100 requests per minute
   message: { error: 'Too many requests, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -17,7 +17,7 @@ const apiLimiter = rateLimit({
 // Strict rate limiter for Gemini API calls
 const geminiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 15, // 15 Gemini calls per minute (free tier limit)
+  max: 25, // 15 Gemini calls per minute (free tier limit)
   message: { error: 'AI service rate limit reached, please wait' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -27,7 +27,7 @@ const geminiLimiter = rateLimit({
 // Auth endpoints rate limiter (stricter) — per IP
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 login attempts per 15 min
+  max: 15, // 10 login attempts per 15 min
   message: { error: 'Too many authentication attempts, try again later' },
   standardHeaders: true,
   legacyHeaders: false,
